@@ -109,8 +109,8 @@ Full changelog in the PDF.
 
 ## Contributing
 
-Bug reports and clarifications — open an issue.\ 
-Proposed changes — open a pull request.\ 
+Bug reports and clarifications — open an issue.\
+Proposed changes — open a pull request.\
 Breaking change proposals — open an issue for discussion before writing spec text.\
 
 ---
