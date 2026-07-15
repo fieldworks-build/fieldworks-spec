@@ -1,5 +1,11 @@
 # FieldWorks Framework Specification
 
+**Version 0.2 — July 2026**
+
+The normative reference for FieldWorks-conformant protocol adapters, plant topology definitions, agent behavior, and memory architecture.
+
+[Download PDF — v0.2](https://github.com/fieldworks-build/fieldworks-spec/blob/main/spec/FieldWorks_Framework_Specification_v0.2.pdf)  ·  [v0.1 archive](https://github.com/fieldworks-build/fieldworks-spec/blob/main/spec/FieldWorks_Framework_Specification_v0.1.pdf)
+
 **Version 0.1 — June 2026**
 
 The normative reference for FieldWorks-conformant protocol adapters, plant topology definitions, agent behavior, and memory architecture.
@@ -17,7 +23,7 @@ The conformant tool surface. Every FieldWorks adapter implements these nine tool
 The `topology.yaml` schema. Equipment types, instances, attributes, fault modes, process areas, and write permissions. The `aggregator.json` schema. The topology builder.
 
 **Part III — Agent Layer**
-Five fixed agents — Cascade, Specialist, Historian, Deadband, Millwright. Diagnostic and action paths. Trust mode ladder. Audit trail contract.
+Five fixed agents — Cascade, Specialist, Historian, Deadband, Millwright. Diagnostic and action paths. Trust mode ladder. The Propose/Approve/Execute mechanism (SUPERVISED mode). Audit trail contract.
 
 **Part IV — Memory Layer**
 Four-store architecture — LadybugDB, DuckDB, InfluxDB, specialist memory files. The memory-mcp server. Memory lifecycle.
@@ -84,7 +90,7 @@ fieldworks test-adapter --url http://localhost:8002/sse --protocol opcua
 
 ## Reference implementation
 
-[waterworks-ai](https://github.com/smslavin/waterworks-ai) implements FieldWorks Framework Specification v0.1.
+[waterworks-ai](https://github.com/smslavin/waterworks-ai) implements FieldWorks Framework Specification v0.1. Migration to v0.2's Propose/Approve/Execute mechanism is in progress.
 
 ---
 
@@ -92,7 +98,7 @@ fieldworks test-adapter --url http://localhost:8002/sse --protocol opcua
 
 | Repo | Language | Status |
 |---|---|---|
-| [fieldworks-core](https://github.com/fieldworks-build/fieldworks-core) | Python | v0.1 |
+| [fieldworks-core](https://github.com/fieldworks-build/fieldworks-core) | Python | v0.2 |
 | [fieldworks-adapters](https://github.com/fieldworks-build/fieldworks-adapters) | Rust | v0.1 — mqtt-mcp, opcua-mcp |
 
 ---
@@ -101,6 +107,7 @@ fieldworks test-adapter --url http://localhost:8002/sse --protocol opcua
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.2 | 2026-07 | Added the Propose/Approve/Execute mechanism to Part III (SUPERVISED mode only). |
 | 0.1 | 2026-06 | Initial release. Parts I–IV, topology builder, audit trail, versioning. |
 
 Full changelog in the PDF.
