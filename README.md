@@ -6,12 +6,6 @@ The normative reference for FieldWorks-conformant protocol adapters, plant topol
 
 [Download PDF — v0.2](https://github.com/fieldworks-build/fieldworks-spec/blob/main/spec/FieldWorks_Framework_Specification_v0.2.pdf)  ·  [v0.1 archive](https://github.com/fieldworks-build/fieldworks-spec/blob/main/spec/FieldWorks_Framework_Specification_v0.1.pdf)
 
-**Version 0.1 — June 2026**
-
-The normative reference for FieldWorks-conformant protocol adapters, plant topology definitions, agent behavior, and memory architecture.
-
-[Download PDF — v0.1](spec/FieldWorks_Framework_Specification_v0.1.pdf)
-
 ---
 
 ## What's in the spec
