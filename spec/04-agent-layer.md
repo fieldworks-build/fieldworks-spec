@@ -433,7 +433,7 @@ A Specialist that ends without a FINDINGS block has not finished. The host must 
 
 > **IMPLEMENTATION STATUS**
 >
-> *The waterworks-ai reference implementation defines both templates and the one parser for them in `chat-ui/verdict.py`, and emits each verdict as a stream event as soon as its block completes. The templates and the parser are moving into fieldworks-core as `fieldworks.agents.verdict`. Streaming detection and the missing-FINDINGS retry remain host behavior.*
+> *fieldworks-core provides both templates and the parser as `fieldworks.agents.verdict` as of 1.5.0, and its specialist and orchestrator prompt builders embed the blocks. Streaming detection and the missing-FINDINGS retry are host behavior: the waterworks-ai reference implementation emits each verdict as a stream event as soon as its block completes, and makes one constrained follow-up call when FINDINGS is missing.*
 
 ## Trust Mode
 
