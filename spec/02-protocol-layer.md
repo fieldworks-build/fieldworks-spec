@@ -230,10 +230,24 @@ Millwright is the only agent that calls write_tag. The topology configuration de
 | Tool | write_tag |
 |:---|:---|
 | **Description** | Write a value to a tag. Gated by topology write permissions. |
-| **Parameters** | `tag_id` (string, required) — Tag identifier. Must appear in topology write_permissions to succeed.<br>`value` (number \| boolean, required) — Value to write. Must be within the configured engineering range.<br>`units` (string, required) — Engineering units of the provided value. Adapter validates against configured units.<br>`operator_id` (string, required) — Identifier of the operator who approved this write. Logged to audit trail.<br>`reason` (string, required) — Human-readable reason for the write. Logged to audit trail. |
+| **Parameters** | `tag_id` (string, required) — Tag identifier. Must appear in topology write_permissions to succeed.<br>`value` (number \| boolean, required) — Value to write. Must be within the configured engineering range.<br>`units` (string, required) — Engineering units of the provided value. Adapter validates against configured units.<br>`operator_id` (string, required) — The principal that approved this write, as defined under Operator identity below. Logged to audit trail.<br>`reason` (string, required) — Human-readable reason for the write. Logged to audit trail. |
 | **Returns** | Write confirmation VQT: { tag_id, value_written, quality, timestamp, units, operator_id } |
 
-> operator_id and reason are required even when the write originates from an automated action path. The topology configuration determines what operator approval means in each deployment context — it may be a named individual, a role, or a session token. The adapter logs it; the topology defines it.
+> operator_id and reason are required even when the write originates from an automated action path. The adapter logs the operator_id it receives. The deployment that approved the write decides what goes in it, under the rules below.
+
+#### Operator identity
+
+`operator_id` names the principal that approved the write. Its value must be one the deployment can stand behind: it names what the deployment actually authenticated, and nothing more.
+
+| How the write was approved | `operator_id` |
+|:---|:---|
+| A person signed in with their own account | That person's identifier, as the deployment's identity provider issues it. |
+| A shared credential, such as an API token several people hold | A fixed value naming the credential, for example `shared-token`. The deployment documents the value and what it means. |
+| Trust-mode dispatch approved it without a person (Part III) | `trust-mode:` followed by the mode, for example `trust-mode:autonomous`. |
+
+A deployment must never put a person's name or a placeholder person, such as `operator_01`, into `operator_id` when it did not authenticate that person. A shared credential proves someone held the secret, not who they were. Recording it as a person would turn an honest gap into a false record, and the audit trail exists to prevent exactly that.
+
+The audit record carries the authentication method next to the identity (Part III, Audit record schema), so an auditor can tell how much weight an `operator_id` bears.
 
 ### Server Tool
 
