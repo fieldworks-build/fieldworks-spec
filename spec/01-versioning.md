@@ -1,8 +1,8 @@
 # Versioning
 
 ```text
-Current version: 0.2
-July 2026  ·  Sean Slavin  ·  fieldworks.build
+Current version: 0.3
+November 2026  ·  Sean Slavin  ·  fieldworks.build
 ```
 
 ## Version Numbering
@@ -23,10 +23,39 @@ FieldWorks uses semantic versioning. Version numbers follow the pattern MAJOR.MI
 |:---|:---|:---|
 | `0.1` | `2026-06` | Initial release. Introduction, Parts I–IV, Topology Builder, Audit Trail, Versioning sections. |
 | `0.2` | `2026-07` | Added the Propose/Approve/Execute mechanism to Part III (SUPERVISED mode only). Documented as a new framework contract, not a description of existing behavior. |
+| `0.3` | `2026-11` | Brought the spec up to date with what shipped since v0.2: tool annotations and result shapes in Part I, the four-mode trust ladder and reactive mode in Part III, the knowledge store and memory tool contract in Part IV, operator identity, and a new Part V for multi-plant deployments. |
 
 New versions will be listed here as the spec evolves. Each entry links to the changelog below for detail on what changed.
 
 ## Changelog
+
+**v0.3 — November 2026**
+
+The first release built from the Markdown source. Since v0.2, fieldworks-core went from 1.0.x to 1.3.0 and the spec fell behind it. This release brings the text up to date and specifies the contracts the next round of framework work will implement.
+
+Source — the spec moved from a Pages document to Markdown in the fieldworks-spec repository, and CI builds the PDF. No content change.
+
+Part I — new: Tool annotations. Read tools declare `readOnlyHint: true`, `connect` and `disconnect` declare `destructiveHint: false`, and `write_tag` claims neither.
+
+Part I — new: Result Shapes. `discover_tags`, `browse`/`scan` and `read_tag_history` wrap their lists in an object under `tags`, `entries` and `values`, as MCP requires.
+
+Part I — Error Handling. `TIMEOUT` is conformant for an unknown tag when the protocol cannot determine non-existence, as with MQTT. `TAG_NOT_FOUND` remains required whenever it can.
+
+Part I — new: Operator identity. `operator_id` stays required and must name what the deployment actually authenticated: a user, a documented shared-credential value, or `trust-mode:<mode>`. Never a placeholder person.
+
+Part II — the conformance suite list and `fieldworks test-adapter` invocation match the current CLI. `facility.site_id` is tied to Part V.
+
+Part III — Trust Mode rewritten to the four modes fieldworks-core implements: advisory, supervised, collaborative and autonomous, with the dispatch table, what the host supplies and the `trust_mode_changed` record. The three-rung ladder and its "assisted" mode are removed. The Propose/Approve/Execute scope boundary no longer calls dispatch unimplemented.
+
+Part III — audit record schema gains `auth_method` next to `operator_id`.
+
+Part III — new: Reactive Mode. Detect, Deadband filter, route by severity, with the framework/host split.
+
+Part IV — the knowledge store (`KnowledgeClient`) joins as a fifth store. The memory server is specified as framework clients plus a tool contract, using the tool names the reference server exposes. The lifecycle describes what runs: agents read memory, the host writes it. Cascade shared memory and OperatorDecision writes move to planned.
+
+Part V — new: The Enterprise Layer. Plant boundaries, the `enterprise.yaml` schema and validation, `site_id` end to end, federated read and the cross-plant orchestrator. The orchestrator cannot propose writes at any plant.
+
+> Several v0.3 changes tighten what counts as conformant: required annotations, wrapped list results, the removal of "assisted", and the renamed memory tools. Under the v0.x policy above, these ship in a minor release. Every published adapter already meets the Part I changes.
 
 **v0.2 — July 2026**
 
@@ -62,6 +91,7 @@ The waterworks-ai reference implementation tracks the current spec version. The 
 |:---|:---|:---|
 | `0.1` | `2026-06` | waterworks-ai v0.1 — Phases 8–10 implemented. Protocol layer, plant layer, four-store memory, topology builder. |
 | `0.2` | 2026-07 | fieldworks-core adds the Propose/Approve/Execute mechanism (SUPERVISED mode only). waterworks-ai has not yet migrated its existing action-path code onto it. |
+| `0.3` | 2026-11 | fieldworks-adapters 1.0.5 and later conform to Part I. fieldworks-core 1.3.0 implements the conformance suite, trust dispatch and the memory clients. It does not yet record `auth_method` or the dispatch disposition, or provide Part V. waterworks-ai 3.3.0 implements reactive mode, the memory server and the enterprise layer. Its action path does not yet use fieldworks-core's trust layer or record `operator_id`. |
 
 ### Breaking change policy
 
@@ -93,7 +123,7 @@ Adding new trust mode configurations.
 
 Features deprecated in a minor version are supported for at least one full major version before removal. Deprecated features are marked in the specification with a deprecation notice and the target removal version.
 
-No features are deprecated in v0.1.
+No features are deprecated as of v0.3.
 
 ## Contributing to the spec
 
