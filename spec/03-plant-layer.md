@@ -52,7 +52,7 @@ Top-level metadata about the facility. Used by Cascade to provide context in res
 | Key | Type | Required | Description |
 |:---|:---|:---|:---|
 | `name` | string | yes | Human-readable facility name. Appears in agent responses and audit log headers. |
-| `site_id` | string | yes | Unique identifier for this site. Used for audit trail attribution and multi-site deployments. |
+| `site_id` | string | yes | Unique identifier for this site. Stamped on the plant's audit records, and the key that names the plant in multi-plant deployments (Part V). Never changes once the plant has records. |
 | `description` | string | no | Brief description of the facility type and function. Provides Cascade with context for response framing. |
 | `timezone` | string | yes | IANA timezone string. e.g. America/New_York. Used for local time display in operator-facing responses. |
 | units_system | string | no | Preferred units system: metric or imperial. Default: metric. Individual attributes override this. |

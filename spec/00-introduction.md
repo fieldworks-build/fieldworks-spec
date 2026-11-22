@@ -26,6 +26,8 @@ The framework has three layers.
 
 The agent layer is where reasoning happens. Cascade orchestrates. Specialists diagnose. Deadband validates. Millwright executes. The Historian provides time dimension across all of it. These agents work together across the diagnostic and action paths, with every step logged to an append-only audit trail.
 
+Above a single plant sits the enterprise layer. It coordinates many plants, each a complete FieldWorks deployment, without merging them. It can ask any plant a question. It cannot reach past that plant's agents to its data or its controls.
+
 # What Fieldworks Is Not
 
 Fieldworks is not a replacement for your control system. It does not manage setpoints autonomously without your knowledge. It does not make safety decisions. It does not operate independently of the people responsible for the plant.
@@ -42,7 +44,7 @@ This specification has three audiences, corresponding to three stages of engagem
 
 **Plant deployers** — OT engineering teams deploying Fieldworks against a real facility. Part II covers the plant layer specification. The topology config schema, process area definitions, equipment type modeling, fault mode design, write permission configuration.
 
-**Framework contributors** — teams extending or building on the agent layer. Part III covers the agent layer specification. The fixed agent designs, specialist instantiation patterns, the action path, trust modes and the audit trail contract.
+**Framework contributors** — teams extending or building on the agent layer. Part III covers the agent layer specification. The fixed agent designs, specialist instantiation patterns, the action path, trust modes and the audit trail contract. Part IV covers memory, and Part V covers deployments that span many plants.
 
 These are not separate audiences. They are stages of the same journey. The adapter builder becomes the deployer becomes the contributor. The specification is written to support that progression.
 
