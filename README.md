@@ -4,7 +4,9 @@
 
 The normative reference for FieldWorks-conformant protocol adapters, plant topology definitions, agent behavior, and memory architecture.
 
-[Download PDF — v0.2](https://github.com/fieldworks-build/fieldworks-spec/blob/main/spec/FieldWorks_Framework_Specification_v0.2.pdf)  ·  [v0.1 archive](https://github.com/fieldworks-build/fieldworks-spec/blob/main/spec/FieldWorks_Framework_Specification_v0.1.pdf)
+**Read it:** [Introduction](spec/00-introduction.md) · [Versioning](spec/01-versioning.md) · [Part I — Protocol](spec/02-protocol-layer.md) · [Part II — Plant](spec/03-plant-layer.md) · [Part III — Agent](spec/04-agent-layer.md) · [Part IV — Memory](spec/05-memory-layer.md)
+
+**PDF:** each release is attached to [Releases](https://github.com/fieldworks-build/fieldworks-spec/releases). The original v0.1 and v0.2 PDFs are in [archive/](archive/).
 
 ---
 
@@ -104,15 +106,30 @@ fieldworks test-adapter --url http://localhost:8002/sse --protocol opcua
 | 0.2 | 2026-07 | Added the Propose/Approve/Execute mechanism to Part III (SUPERVISED mode only). |
 | 0.1 | 2026-06 | Initial release. Parts I–IV, topology builder, audit trail, versioning. |
 
-Full changelog in the PDF.
+Full changelog in [spec/01-versioning.md](spec/01-versioning.md).
+
+---
+
+## Source and build
+
+The Markdown in [`spec/`](spec/) is the source of truth, one file per part. The PDF is generated from it, so never edit a PDF by hand.
+
+```bash
+scripts/build-pdf.sh 0.3    # -> build/FieldWorks_Framework_Specification_v0.3.pdf
+```
+
+The script needs only [uv](https://docs.astral.sh/uv/). It runs pandoc and the Typst compiler from pinned Python packages, so a local build matches CI. `scripts/table-widths.lua` and the Typst rules in `spec/metadata.yaml` handle PDF layout only and don't affect the Markdown.
+
+CI (`.github/workflows/pdf.yml`) builds the PDF for every pull request that touches the spec and attaches it as a workflow artifact. Pushing a `v*` tag publishes a GitHub Release with the PDF.
 
 ---
 
 ## Contributing
 
-Bug reports and clarifications — open an issue.\
-Proposed changes — open a pull request.\
-Breaking change proposals — open an issue for discussion before writing spec text.\
+- **Bug reports and clarifications:** open an issue.
+- **Proposed changes:** open a pull request that edits the Markdown. Review the PDF artifact CI attaches.
+- **Breaking change proposals:** open an issue for discussion before writing spec text.
+- **Changes that come with code:** when a fieldworks-core or fieldworks-adapters change alters a contract the spec defines, open the spec PR first or alongside the code, and link the two.
 
 ---
 
