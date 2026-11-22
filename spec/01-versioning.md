@@ -43,9 +43,9 @@ Part I — Error Handling. `TIMEOUT` is conformant for an unknown tag when the p
 
 Part I — new: Operator identity. `operator_id` stays required and must name what the deployment actually authenticated: a user, a documented shared-credential value, or `trust-mode:<mode>`. Never a placeholder person.
 
-Part II — the conformance suite list and `fieldworks test-adapter` invocation match the current CLI. `facility.site_id` is tied to Part V.
+Part II — the conformance suite list and `fieldworks test-adapter` invocation match the current CLI. `facility.site_id` is tied to Part V. New optional `facility.trust_mode`, default supervised.
 
-Part III — Trust Mode rewritten to the four modes fieldworks-core implements: advisory, supervised, collaborative and autonomous, with the dispatch table, what the host supplies and the `trust_mode_changed` record. The three-rung ladder and its "assisted" mode are removed. The Propose/Approve/Execute scope boundary no longer calls dispatch unimplemented.
+Part III — Trust Mode rewritten to the four modes fieldworks-core implements: advisory, supervised, collaborative and autonomous, with the dispatch table, what the host supplies and the `trust_mode_changed` record. The three-rung ladder and its "assisted" mode are removed. The Propose/Approve/Execute scope boundary no longer calls dispatch unimplemented. Trust mode is configured in topology.yaml, not aggregator.json, which resolves a contradiction with Part II's array schema.
 
 Part III — audit record schema gains `auth_method` next to `operator_id`.
 
