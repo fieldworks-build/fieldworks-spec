@@ -519,9 +519,9 @@ The adapter conformance suite validates that a protocol adapter meets the requir
 
 - read_tag returns a valid VQT envelope for a known tag.
 
-- read_tag returns a structured TAG_NOT_FOUND error for an unknown tag.
+- read_tag returns a structured TAG_NOT_FOUND error for an unknown tag, or TIMEOUT when the protocol cannot determine that a tag does not exist (Part I, Error Handling).
 
-- read_tag_history returns an ordered array of VQT envelopes for a known tag.
+- read_tag_history returns ordered VQT envelopes under `values`, or HISTORY_UNAVAILABLE when the protocol has no history.
 
 - write_tag returns TAG_NOT_WRITABLE for a tag not in write permissions.
 
@@ -534,9 +534,11 @@ The adapter conformance suite validates that a protocol adapter meets the requir
 - get_topic_tree or get_node_tree returns a structured hierarchy.
 
 ```shell
-fieldworks test-adapter --url http://localhost:8001/sse --protocol mqtt
-fieldworks test-adapter --url http://localhost:8002/sse --protocol opcua
+fieldworks test-adapter --command "mqtt-mcp" --host localhost --port 1883
+fieldworks test-adapter --command "opcua-mcp" --host 127.0.0.1 --port 4840
 ```
+
+The suite starts the adapter binary as an MCP stdio subprocess. Without `--host`, it runs only the checks that need no live connection: tool discovery, tool annotations, and get_server_info.
 
 > The conformance suite requires a running adapter with at least one readable tag. For write tests, at least one writable tag must be configured. The suite does not perform actual writes to the control layer; write tests validate error handling and permission enforcement only.
 

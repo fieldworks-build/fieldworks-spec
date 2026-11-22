@@ -97,7 +97,7 @@ All tools return structured errors. Adapters must never throw unhandled exceptio
 
 Required error codes
 
-- `TAG_NOT_FOUND` — The requested tag_id does not exist on this server.
+- `TAG_NOT_FOUND` — The requested tag_id does not exist on this server. Returned whenever the protocol can determine that a tag does not exist.
 
 - `TAG_NOT_WRITABLE` — A write was attempted on a tag not configured for write access.
 
@@ -111,7 +111,27 @@ Required error codes
 
 - `HISTORY_UNAVAILABLE` — read_tag_history was called but the protocol or endpoint does not support historical data.
 
+### Unknown tags on protocols without a tag registry
+
+Some protocols cannot prove that a tag does not exist. MQTT has no server-side registry of topics. An MQTT adapter can only report that no message arrived on a topic within the timeout window. It cannot tell a topic that does not exist from one that has not published recently.
+
+An adapter for such a protocol returns `TIMEOUT` for an unknown tag. That is conformant only when the protocol gives the adapter no way to check. An adapter whose protocol has an address space it can query, such as OPC-UA, must return `TAG_NOT_FOUND`. Returning `TIMEOUT` instead is non-conformant.
+
+Clients treat both codes the same way for an unknown tag: there is no value for this tag.
+
 Error messages must be human-readable. They will surface to operators. Protocol-specific codes and addresses should not appear in the message field.
+
+## Result Shapes
+
+MCP requires a tool's structured result to be a JSON object. A tool that returns a list wraps it in an object under a fixed key, so every client finds it in the same place:
+
+| Tool | List key |
+|:---|:---|
+| `discover_tags` | `tags` |
+| `browse` / `scan` | `entries` |
+| `read_tag_history` | `values` |
+
+Every other tool returns a single object, as defined in its table below. Errors use the error envelope above in place of the result.
 
 ## The Nine Required Tools
 
@@ -149,7 +169,7 @@ Enumerate available tags with full metadata. The primary mechanism for the plant
 |:---|:---|
 | **Description** | Enumerate available tags with metadata. Returns the full tag inventory or a filtered subset. |
 | **Parameters** | `process_area` (string, optional) — Filter results to tags belonging to this process area. Must match a process_area defined in topology.yaml.<br>`equipment_id` (string, optional) — Filter results to tags belonging to this equipment instance.<br>`include_metadata` (boolean, optional) — Include extended metadata (description, normal range, fault modes). Default true. |
-| **Returns** | Array of tag descriptors: [{ tag_id, name, description, units, data_type, writable, process_area, equipment_id, normal_range: { min, max } }] |
+| **Returns** | Object wrapping an array of tag descriptors: { tags: [{ tag_id, name, description, units, data_type, writable, process_area, equipment_id, normal_range: { min, max } }] } |
 
 #### `browse` (OPC-UA) / `scan` (MQTT)
 
@@ -163,7 +183,7 @@ scan (MQTT) discovers active topics by subscribing to a wildcard pattern and col
 |:---|:---|
 | **Description** | Protocol-native address space exploration. |
 | **Parameters** | `node_id` (string, optional) — (OPC-UA) Starting node for traversal. Defaults to root Objects node.<br>`topic_pattern` (string, optional) — (MQTT) Wildcard subscription pattern. Default #.<br>`scan_duration_ms` (integer, optional) — (MQTT) Observation window duration. Default 5000.<br>`depth` (integer, optional) — (OPC-UA) Maximum traversal depth. Default 3. Use -1 for unlimited. |
-| **Returns** | Array of discovered nodes or topics with available metadata. |
+| **Returns** | Object wrapping an array of discovered nodes or topics with available metadata: { entries: [ ... ] } |
 
 #### `get_topic_tree` / `get_node_tree`
 
@@ -191,7 +211,7 @@ Read the current value of a single tag. The most frequently called tool in the f
 
 #### `read_tag_history`
 
-Read a time series for a tag over a defined window. Used by the Historian agent to provide time dimension to diagnostic queries. Returns an array of VQT envelopes ordered by timestamp ascending.
+Read a time series for a tag over a defined window. Used by the Historian agent to provide time dimension to diagnostic queries. Returns VQT envelopes ordered by timestamp ascending, wrapped in an object under `values`.
 
 Not all protocols support historical data natively. Adapters for protocols without native historian capability must return a HISTORY_UNAVAILABLE error rather than attempting to simulate history.
 
@@ -199,7 +219,7 @@ Not all protocols support historical data natively. Adapters for protocols witho
 |:---|:---|
 | **Description** | Read a time series for a tag over a defined time window. |
 | **Parameters** | `tag_id` (string, required) — Tag identifier.<br>`start_time` (string, required) — Window start. ISO 8601 UTC.<br>`end_time` (string, required) — Window end. ISO 8601 UTC.<br>`max_points` (integer, optional) — Maximum number of data points to return. Adapter may interpolate or downsample to fit. Default 1000.<br>`quality_filter` (string, optional) — Return only values meeting this quality threshold. One of: good, good_or_uncertain. Default: no filter. |
-| **Returns** | Array of VQT envelopes ordered by timestamp ascending: [{ tag_id, value, quality, timestamp, units }] |
+| **Returns** | Object wrapping VQT envelopes ordered by timestamp ascending: { values: [{ tag_id, value, quality, timestamp, units }] } |
 
 #### `write_tag`
 

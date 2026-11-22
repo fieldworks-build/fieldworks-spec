@@ -77,9 +77,9 @@ fieldworks validate topology.yaml
 # Validate with aggregator — checks tag bindings against live adapters
 fieldworks validate topology.yaml --aggregator aggregator.json
 
-# Run the adapter conformance suite
-fieldworks test-adapter --url http://localhost:8001/sse --protocol mqtt
-fieldworks test-adapter --url http://localhost:8002/sse --protocol opcua
+# Run the adapter conformance suite against an adapter binary
+fieldworks test-adapter --command "mqtt-mcp" --host localhost --port 1883
+fieldworks test-adapter --command "opcua-mcp" --host 127.0.0.1 --port 4840
 ```
 
 ---
