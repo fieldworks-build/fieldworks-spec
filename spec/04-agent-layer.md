@@ -441,10 +441,11 @@ Planned fields added as the framework matures.
 | `event_id` | string | yes | UUID. Unique identifier for this audit record. |
 | `process_area_id` | string | no | Relevant process area, if applicable. |
 | `equipment_instance_id` | string | no | Relevant equipment instance, if applicable. |
-| `operator_id` | string | no | Operator identity, present for approval events and write executions. |
+| `operator_id` | string | no | The principal that approved the action, following the rules in Part I, Operator identity. Present for approval events and write executions. |
+| `auth_method` | string | no | How the deployment established `operator_id`. One of `user` (a person's own account), `shared_credential` (a credential several people hold), or `trust_mode` (trust-mode dispatch approved without a person). Present whenever `operator_id` is. |
 | `trust_mode` | string | yes | Trust mode active at the time of this event. |
 
-> The two tiers will merge as the framework develops. A deployment running only the diagnostic path today produces the current fields. When the action path is built, trust_mode and operator_id become standard fields on the relevant records. Existing log consumers will not break. The schema is additive.
+> The two tiers will merge as the framework develops. A deployment running only the diagnostic path today produces the current fields. When the action path is built, trust_mode, operator_id and auth_method become standard fields on the relevant records. Existing log consumers will not break. The schema is additive.
 
 ### Event types
 
