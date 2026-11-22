@@ -62,7 +62,7 @@ Quality is never absent. If the protocol does not provide quality natively, the 
 
 ### Conformance
 
-An adapter is conformant if it implements all nine tools, returns the VQT envelope for all data operations, returns structured errors, enforces topology write permissions, and logs all write operations.
+An adapter is conformant if it implements all nine tools, returns the VQT envelope for all data operations, returns structured errors, declares the required MCP tool annotations, enforces topology write permissions, and logs all write operations.
 
 Partial conformance is not conformance.
 
