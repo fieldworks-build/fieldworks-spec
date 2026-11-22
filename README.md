@@ -1,12 +1,12 @@
 # FieldWorks Framework Specification
 
-**Version 0.2 — July 2026**
+**Version 0.3 — November 2026**
 
 The normative reference for FieldWorks-conformant protocol adapters, plant topology definitions, agent behavior, and memory architecture.
 
-**Read it:** [Introduction](spec/00-introduction.md) · [Versioning](spec/01-versioning.md) · [Part I — Protocol](spec/02-protocol-layer.md) · [Part II — Plant](spec/03-plant-layer.md) · [Part III — Agent](spec/04-agent-layer.md) · [Part IV — Memory](spec/05-memory-layer.md)
+**Read it:** [Introduction](spec/00-introduction.md) · [Versioning](spec/01-versioning.md) · [Part I — Protocol](spec/02-protocol-layer.md) · [Part II — Plant](spec/03-plant-layer.md) · [Part III — Agent](spec/04-agent-layer.md) · [Part IV — Memory](spec/05-memory-layer.md) · [Part V — Enterprise](spec/06-enterprise-layer.md)
 
-**PDF:** each release is attached to [Releases](https://github.com/fieldworks-build/fieldworks-spec/releases). The original v0.1 and v0.2 PDFs are in [archive/](archive/).
+**PDF:** each release is attached to [Releases](https://github.com/fieldworks-build/fieldworks-spec/releases). The v0.1 and v0.2 PDFs, which predate the Markdown source, are in [archive/](archive/).
 
 ---
 
@@ -23,6 +23,9 @@ Five fixed agents — Cascade, Specialist, Historian, Deadband, Millwright. Diag
 
 **Part IV — Memory Layer**
 Five-store architecture — LadybugDB, DuckDB, InfluxDB, specialist memory files, and the knowledge store for facility documentation. The memory server's tool contract. Memory lifecycle.
+
+**Part V — Enterprise Layer**
+Multi-plant deployments. Plant boundaries, the `enterprise.yaml` schema, `site_id`, federated read, and the cross-plant orchestrator.
 
 ---
 
@@ -86,7 +89,7 @@ fieldworks test-adapter --command "opcua-mcp" --host 127.0.0.1 --port 4840
 
 ## Reference implementation
 
-[waterworks-ai](https://github.com/smslavin/waterworks-ai) implements FieldWorks Framework Specification v0.1. Migration to v0.2's Propose/Approve/Execute mechanism is in progress.
+[waterworks-ai](https://github.com/smslavin/waterworks-ai) is the reference application. The Compatibility table in [spec/01-versioning.md](spec/01-versioning.md) lists which parts of each spec version it and the framework implement.
 
 ---
 
@@ -94,8 +97,8 @@ fieldworks test-adapter --command "opcua-mcp" --host 127.0.0.1 --port 4840
 
 | Repo | Language | Status |
 |---|---|---|
-| [fieldworks-core](https://github.com/fieldworks-build/fieldworks-core) | Python | v0.2 |
-| [fieldworks-adapters](https://github.com/fieldworks-build/fieldworks-adapters) | Rust | v0.1 — mqtt-mcp, opcua-mcp |
+| [fieldworks-core](https://github.com/fieldworks-build/fieldworks-core) | Python | 1.3.0, v0.3 except as noted in Compatibility |
+| [fieldworks-adapters](https://github.com/fieldworks-build/fieldworks-adapters) | Rust | 1.0.5+ conforms to v0.3 Part I: mqtt-mcp, opcua-mcp, modbus-mcp |
 
 ---
 
@@ -103,6 +106,7 @@ fieldworks test-adapter --command "opcua-mcp" --host 127.0.0.1 --port 4840
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.3 | 2026-11 | Caught up with shipped code: annotations, trust dispatch, reactive mode, knowledge store, operator identity. Added Part V (enterprise). |
 | 0.2 | 2026-07 | Added the Propose/Approve/Execute mechanism to Part III (SUPERVISED mode only). |
 | 0.1 | 2026-06 | Initial release. Parts I–IV, topology builder, audit trail, versioning. |
 
