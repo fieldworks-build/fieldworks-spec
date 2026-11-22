@@ -116,7 +116,7 @@ What Cascade does
 
 - Dispatches the Historian when trend context would improve diagnostic quality.
 
-- Synthesizes findings from multiple Specialists into a coherent, operator-facing response.
+- Synthesizes findings from multiple Specialists into a coherent, operator-facing response, opening an overview with a SUMMARY block (see Verdict Blocks).
 
 - Routes validated findings to the action path when Deadband determines intervention is warranted.
 
@@ -168,7 +168,7 @@ What a Specialist does
 
 - Notes missing attributes explicitly rather than silently excluding them from the diagnosis.
 
-- Returns a structured finding to Cascade with condition assessment, supporting evidence, confidence level, and recommended action if warranted.
+- Returns its finding to Cascade with condition assessment, supporting evidence and recommended action if warranted, closing with a FINDINGS block (see Verdict Blocks).
 
 What a Specialist does not do
 
@@ -352,6 +352,88 @@ What Millwright does not do
 - Assume success. It always confirms the outcome by reading back the written value.
 
 > Millwright's constraint is not a limitation of the framework. It is a design principle. The agent that executes is the most constrained agent in the system. Cascade has broad context. Specialists have deep knowledge. Deadband has judgment. Millwright has one job. Execute what it has been given, within the limits it has been set, and document what happened.
+
+## Verdict Blocks
+
+An agent answers in prose for the operator. The rest of the system needs that answer as data: the status shown on a piece of equipment or a process area, the session summary, the incident record, and the cross-plant summary in Part V. Two fixed blocks carry it. A **FINDINGS** block closes every Specialist response, and a **SUMMARY** block opens Cascade's answer to an overview question. Together they are the agent layer's output contract.
+
+### Status
+
+Both blocks carry one of three statuses, ordered from least to most severe:
+
+| Status | Meaning |
+|:---|:---|
+| `Normal` | Nothing outside expected operation. |
+| `Anomaly Detected` | Something is outside expected operation, without a confirmed fault. |
+| `Fault Detected` | A fault is confirmed or strongly indicated. |
+
+When a verdict covers several things, its status is the most severe among them: one unit at `Fault Detected` makes a process area `Fault Detected`. Anything without a valid verdict, such as an agent that returned none or a status outside these three, is *unknown*. Unknown is never Normal: it ranks at least `Anomaly Detected` when statuses are combined.
+
+### FINDINGS
+
+Every Specialist, and the Historian, ends its response with:
+
+```text
+FINDINGS:
+Status: Normal | Anomaly Detected | Fault Detected
+Confidence: 0.0–1.0
+Key observations:
+- [bullet points]
+```
+
+`Status` and `Confidence` are required. `Confidence` is a number from 0.0 to 1.0 that reflects instrumentation quality and how strongly the evidence matches a known pattern, so a finding built on suspect bindings carries a lower one. `Key observations` is optional.
+
+The block comes last, after the reasoning and evidence it summarizes.
+
+### SUMMARY
+
+When the operator asks for an overview of an area, a plant or (Part V) an enterprise, Cascade opens its answer with:
+
+```text
+SUMMARY:
+Status: Normal | Anomaly Detected | Fault Detected
+Overview: [one or two plain-language sentences]
+Key points:
+- [bullet points — omit the list entirely if there is nothing notable]
+```
+
+`Status` and `Overview` are required. `Key points` is optional. The block comes first, before any per-area detail, so the conclusion is never pushed past a response length limit. A conversational follow-up that isn't a fresh overview carries no SUMMARY.
+
+### Parsing
+
+A conformant parser reads both blocks by these rules, which accept what models actually write:
+
+- A block starts at a line holding only `FINDINGS:` or `SUMMARY:`. Labels are case-insensitive and may be wrapped in markdown bold (`**Status:**`).
+
+- Field lines follow the header. One blank line may sit between the fields and the bullet list. Any other blank line, or a line that is neither a field nor a bullet, ends the block.
+
+- A block missing a required field is not a verdict.
+
+- If a response holds more than one complete block, the last one is the verdict.
+
+- While a response is still streaming, a block counts only once a blank line follows it, so a half-written list is never reported. At the end of the response, the end of the text closes it too.
+
+- A status matches its canonical spelling case-insensitively, ignoring a trailing period. Any other value is unknown.
+
+The parsed verdict carries the block kind, status, confidence (FINDINGS), overview (SUMMARY), the bullet points, and the exact block text, so a reader holding the response can show the prose without repeating the block.
+
+### A missing verdict
+
+A Specialist that ends without a FINDINGS block has not finished. The host must try once to obtain one, and the reference implementation makes a single follow-up call that is constrained to begin the block. If that also fails, the Specialist's status is unknown and is reported that way. It is never left out of a combined status and never shown as Normal.
+
+### Where verdicts go
+
+- **Equipment and area status.** A Specialist's FINDINGS status is the status of the equipment it covers.
+
+- **Incident record.** A Specialist verdict that is not Normal produces an incident record (see The incident record). Its `status` is the verdict's status in lowercase, and its `confidence` is the FINDINGS confidence.
+
+- **Memory.** The same verdict triggers the Incident node the host writes to the knowledge graph (Part IV, The Memory Lifecycle).
+
+- **Cross-plant answers.** A plant's SUMMARY verdict is what the cross-plant orchestrator receives from `diagnose_plant` (Part V).
+
+> **IMPLEMENTATION STATUS**
+>
+> *The waterworks-ai reference implementation defines both templates and the one parser for them in `chat-ui/verdict.py`, and emits each verdict as a stream event as soon as its block completes. The templates and the parser are moving into fieldworks-core as `fieldworks.agents.verdict`. Streaming detection and the missing-FINDINGS retry remain host behavior.*
 
 ## Trust Mode
 
@@ -587,8 +669,8 @@ In addition to the session log, FieldWorks maintains a separate incident index. 
 | `ts` | string | yes | Timestamp of the session that produced this incident. |
 | `user_question` | string | yes | The operator query that initiated the session. |
 | `equipment` | string | no | Comma-separated list of equipment instance IDs implicated in the finding. Empty if no specific equipment was identified |
-| `status` | string | yes | Diagnostic outcome. One of normal, anomaly detected, fault detected. |
-| `confidence` | number | yes | Confidence score from 0.0 to 1.0. Relects the certainty of the finding given instrumentation quality and pattern match strength. |
+| `status` | string | yes | Diagnostic outcome: the verdict's status in lowercase (see Verdict Blocks). One of normal, anomaly detected, fault detected. |
+| `confidence` | number | yes | The FINDINGS confidence, from 0.0 to 1.0. Reflects the certainty of the finding given instrumentation quality and pattern match strength. |
 | `mode` | string | yes | Agent mode that produced the finding. One of single, multi. |
 
 ```json
