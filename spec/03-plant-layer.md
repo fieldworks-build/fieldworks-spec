@@ -515,6 +515,8 @@ The adapter conformance suite validates that a protocol adapter meets the requir
 
 - connect and disconnect complete without error.
 
+- Every required tool declares the tool annotations Part I requires.
+
 - discover_tags returns well-formed tag descriptors with all required fields.
 
 - read_tag returns a valid VQT envelope for a known tag.

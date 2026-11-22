@@ -249,9 +249,25 @@ A FieldWorks-conformant MCP server meets all of the following requirements:
 
 - Follows the naming conventions defined in this specification.
 
+- Declares the required MCP tool annotations, defined below.
+
 Adapters that meet these requirements are conformant. Adapters that do not are not FieldWorks adapters, regardless of whether they implement some subset of the tools.
 
 Partial conformance is not conformance. The agent layer assumes the full surface is present. An adapter missing read_tag_history will cause Historian to fail silently. An adapter that surfaces raw protocol errors will confuse operators. The requirements exist because the framework depends on them.
+
+### Tool annotations
+
+MCP lets a server describe each tool's side effects with annotations. Clients use them to decide which tools a model may call without asking. Under the MCP specification's defaults, a tool with no annotations may be destructive. A client that honors annotations therefore cannot tell an unannotated `read_tag` from `write_tag`, and a careful client must treat every unannotated tool as a write. The waterworks-ai reference application removes unannotated tools from the model's tool list for this reason.
+
+A conformant adapter declares these annotations on the nine required tools:
+
+| Tools | Required annotation |
+|:---|:---|
+| `discover_tags`, `browse` / `scan`, `get_topic_tree` / `get_node_tree`, `read_tag`, `read_tag_history`, `get_server_info` | `readOnlyHint: true` |
+| `connect`, `disconnect` | `destructiveHint: false`. They change the adapter's connection state, not the process. |
+| `write_tag` | Neither `readOnlyHint: true` nor `destructiveHint: false`. It is the one tool with side effects on the physical process and must never claim otherwise. |
+
+`idempotentHint` and `openWorldHint` are left to each adapter. Protocol-specific extension tools should declare annotations that describe them honestly, and an extension tool that writes to the process is held to the same rule as `write_tag`.
 
 ## Reference Implementations
 
