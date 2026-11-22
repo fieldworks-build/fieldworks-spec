@@ -417,22 +417,26 @@ A trust mode change is a deliberate act by a named person. Every change is recor
 
 ### Trust mode configuration
 
-Trust mode is set in the aggregator configuration at the deployment level. The host reads it at startup and passes it to dispatch.
+Trust mode is set in the `facility` section of topology.yaml (Part II). It belongs to the facility, not to the connection model in aggregator.json: it records how far this plant's operators have chosen to widen the loop. The host reads it at startup, logs it to the audit trail and passes it to dispatch.
 
-```json
-{
-  "trust_mode": "collaborative",
-  "trust_mode_notes": "Elevated from supervised 2026-04-01 after 90-day
-    supervised evaluation. Reviewed and approved by plant manager.",
-  "servers": [ ... ]
-}
+```yaml
+facility:
+  name: Riverside Water Treatment Plant
+  site_id: wtp-riverside-01
+  timezone: America/Chicago
+  trust_mode: collaborative
+  trust_mode_notes: >
+    Elevated from supervised 2026-04-01 after 90-day supervised
+    evaluation. Reviewed and approved by plant manager.
 ```
 
-| Field | Type | Required | Description |
+| Key | Type | Required | Description |
 |:---|:---|:---|:---|
-| `trust_mode` | string | yes | One of: advisory, supervised, collaborative, autonomous. |
+| `trust_mode` | string | no | One of: advisory, supervised, collaborative, autonomous. Default: supervised. |
 | `trust_mode_notes` | string | no | Human-readable record of why this mode was set and when. Logged to audit trail on startup. |
 | `autonomous_notify_channel` | string | no | Notification endpoint for autonomous action alerts. Required if trust_mode is autonomous. |
+
+A topology.yaml without `trust_mode` runs supervised. A plant gains autonomy only by someone writing it down.
 
 ## The Audit Trail
 

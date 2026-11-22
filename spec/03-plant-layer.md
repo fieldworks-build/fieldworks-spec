@@ -56,6 +56,7 @@ Top-level metadata about the facility. Used by Cascade to provide context in res
 | `description` | string | no | Brief description of the facility type and function. Provides Cascade with context for response framing. |
 | `timezone` | string | yes | IANA timezone string. e.g. America/New_York. Used for local time display in operator-facing responses. |
 | units_system | string | no | Preferred units system: metric or imperial. Default: metric. Individual attributes override this. |
+| `trust_mode` | string | no | The plant's trust mode: advisory, supervised, collaborative or autonomous. Default: supervised. See Part III, Trust mode configuration, with `trust_mode_notes` and `autonomous_notify_channel`. |
 
 ```yaml
 facility:
@@ -501,6 +502,8 @@ The topology validator checks topology.yaml against the schema defined in this s
 - Affected attributes in fault modes reference attribute IDs defined on the equipment type.
 
 - Historian source, if specified, references a name defined in aggregator.json.
+
+- facility.trust_mode, if present, is one of the four trust modes, and autonomous_notify_channel is present when it is autonomous.
 
 ```shell
 fieldworks validate topology.yaml
