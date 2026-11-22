@@ -1,7 +1,7 @@
 # Versioning
 
 ```text
-Current version: 0.3
+Current version: 0.4
 November 2026  ·  Sean Slavin  ·  fieldworks.build
 ```
 
@@ -24,10 +24,19 @@ FieldWorks uses semantic versioning. Version numbers follow the pattern MAJOR.MI
 | `0.1` | `2026-06` | Initial release. Introduction, Parts I–IV, Topology Builder, Audit Trail, Versioning sections. |
 | `0.2` | `2026-07` | Added the Propose/Approve/Execute mechanism to Part III (SUPERVISED mode only). Documented as a new framework contract, not a description of existing behavior. |
 | `0.3` | `2026-11` | Brought the spec up to date with what shipped since v0.2: tool annotations and result shapes in Part I, the four-mode trust ladder and reactive mode in Part III, the knowledge store and memory tool contract in Part IV, operator identity, and a new Part V for multi-plant deployments. |
+| `0.4` | `2026-11` | Defined the FINDINGS and SUMMARY verdict blocks in Part III as the agent layer's output contract. |
 
 New versions will be listed here as the spec evolves. Each entry links to the changelog below for detail on what changed.
 
 ## Changelog
+
+**v0.4 — November 2026**
+
+Part III — new section: Verdict Blocks. Every Specialist and the Historian end with a FINDINGS block, and Cascade opens an overview with a SUMMARY block. The section defines the three statuses and their severity order, both templates and their required fields, the parsing rules a conformant parser applies, and the missing-verdict rule: a Specialist without a verdict is unknown, never Normal. The incident record's `status` and `confidence` now come from the verdict.
+
+Part III and Part V — implementation status notes updated: fieldworks-core 1.4.0 provides the enterprise layer's plant-agnostic logic, and 1.5.0 provides the verdict templates and parser.
+
+This is an additive, non-breaking change. The blocks were already in use; this release writes them down.
 
 **v0.3 — November 2026**
 
@@ -92,6 +101,7 @@ The waterworks-ai reference implementation tracks the current spec version. The 
 | `0.1` | `2026-06` | waterworks-ai v0.1 — Phases 8–10 implemented. Protocol layer, plant layer, four-store memory, topology builder. |
 | `0.2` | 2026-07 | fieldworks-core adds the Propose/Approve/Execute mechanism (SUPERVISED mode only). waterworks-ai has not yet migrated its existing action-path code onto it. |
 | `0.3` | 2026-11 | fieldworks-adapters 1.0.5 and later conform to Part I. fieldworks-core 1.3.0 implements the conformance suite, trust dispatch and the memory clients. It does not yet record `auth_method` or the dispatch disposition, or provide Part V. waterworks-ai 3.3.0 implements reactive mode, the memory server and the enterprise layer. Its action path does not yet use fieldworks-core's trust layer or record `operator_id`. |
+| `0.4` | 2026-11 | fieldworks-adapters 1.0.5 and later conform to Part I. fieldworks-core 1.5.0 adds the Part V enterprise layer (1.4.0) and the Verdict Blocks templates and parser. It does not yet record `auth_method` or the dispatch disposition, or load `facility.trust_mode`. waterworks-ai 3.4.0 runs its enterprise layer and verdict parsing on fieldworks-core, meeting Part V's validation, federated-read and audit rules. Its action path does not yet use fieldworks-core's trust layer or record `operator_id`. |
 
 ### Breaking change policy
 
