@@ -19,7 +19,7 @@ The conformant tool surface. Every FieldWorks adapter implements these nine tool
 The `topology.yaml` schema. Equipment types, instances, attributes, fault modes, process areas, and write permissions. The `aggregator.json` schema. The topology builder.
 
 **Part III — Agent Layer**
-Five fixed agents — Cascade, Specialist, Historian, Deadband, Millwright. Diagnostic and action paths. Trust mode ladder. The Propose/Approve/Execute mechanism (SUPERVISED mode). Audit trail contract.
+Five fixed agents — Cascade, Specialist, Historian, Deadband, Millwright. Diagnostic and action paths. The four-mode trust ladder (advisory, supervised, collaborative, autonomous) and its dispatch rules. The Propose/Approve/Execute mechanism. Audit trail contract.
 
 **Part IV — Memory Layer**
 Four-store architecture — LadybugDB, DuckDB, InfluxDB, specialist memory files. The memory-mcp server. Memory lifecycle.
