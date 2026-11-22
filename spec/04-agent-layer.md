@@ -52,6 +52,38 @@ The action path is the path of intervention. It begins when a diagnostic finding
 
 The action path always produces an audit record regardless of trust mode. An autonomous action that bypassed operator approval is logged as clearly as one that required it. The log is the accountability mechanism. It cannot be disabled.
 
+## Reactive Mode
+
+In query-response operation, nothing happens until an operator asks. Reactive mode adds a second trigger: the plant itself. The deployment watches incoming process data, and when a value leaves its normal range, the agent layer wakes without being asked. The operator hears about a developing condition before they think to ask.
+
+Reactive mode is opt-in per deployment. It does not replace query-response. Both run side by side.
+
+### The reactive sequence
+
+- **Detect.** A monitor watches live process values against each attribute's `normal_range` from topology.yaml. An excursion becomes an anomaly carrying the equipment instance, the attribute, the value, the normal range and a severity. The severity comes from the graph's FaultMode nodes for that equipment type and attribute.
+
+- **Filter.** Deadband receives the anomaly and answers one question: escalate or suppress. It checks whether the excursion is sustained, which way it is trending and whether confidence clears the threshold for its severity. A suppressed anomaly is logged and goes no further.
+
+- **Route by severity.** An escalated anomaly is handled according to its severity tier:
+
+  - **Advisory:** surfaced to the operator. No agents run.
+
+  - **Warning:** surfaced at once, then diagnosed by the specialists for the affected process area. Their findings follow the alert.
+
+  - **Critical:** surfaced at once, then diagnosed by the full Cascade path, which may propose an action. Any proposal goes through trust-mode dispatch exactly as one from a query would.
+
+- **Log.** Every step is recorded in the audit trail: the anomaly, Deadband's verdict and reason, what was surfaced and the diagnosis.
+
+The alert never waits for its diagnosis. A critical diagnosis can block on an action proposal for as long as the operator takes to answer it. An alert held until then would hide the most urgent conditions for minutes, from every operator who is not looking at the approval.
+
+### What the framework provides, what the host provides
+
+**Framework provides:** the Deadband contract in `fieldworks.agents.deadband`. That is its three tool schemas, its system prompt, the ISA-18.2 severity tiers (advisory, warning, critical) and the convention for parsing an ESCALATE or SUPPRESS verdict. `check_confidence_threshold` needs no data source and is implemented in full.
+
+**Host provides:** the monitor and its transport, the data behind `verify_sustained` and `get_trend_direction` (they need near-real-time process history, which a plant-agnostic framework cannot assume), routing by severity, delivery to the operator, and rate limiting such as per-equipment cooldowns.
+
+The waterworks-ai reference application implements reactive mode with an MQTT monitor, Deadband on a fast model and Cascade waking for warnings and criticals.
+
 ## The Agents
 
 ### Cascade
@@ -239,6 +271,8 @@ Validator. The gate between diagnosis and action.
 Deadband is named for one of the most fundamental concepts in process control. A deadband is a range around a setpoint within which no corrective action is taken. Small deviations are ignored. Only deviations that exceed the band trigger a response. This prevents the control system from chasing noise.
 
 The Deadband agent does exactly this for the action path. It receives a diagnostic finding and asks, is this noise or signal? A single reading outside normal range is not necessarily a problem. A sustained exceedance with a deteriorating trend and high-confidence instrumentation is. Deadband knows the difference.
+
+Deadband plays the same role at the front of reactive mode. Before any agent wakes, it decides whether an anomaly the monitor detected is worth escalating (see Reactive Mode). Its three tools are `verify_sustained`, `get_trend_direction` and `check_confidence_threshold`.
 
 What Deadband evaluates
 

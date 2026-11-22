@@ -6,11 +6,11 @@ Parts I through III describe a FieldWorks deployment that is capable and correct
 
 What Parts I through III do not provide is memory. Every session starts cold. A Specialist dispatched to diagnose a fault on RawWater_01 knows the topology, knows the current values and knows the fault mode descriptions. It does not know that RawWater_01 threw the same fault three times in the past six weeks, that the operator dismissed the first two events as transient or that the vibration binding on that equipment was flagged as suspect after a transmitter replacement. That knowledge exists in several places, in the audit trail, in the historian, in the operator's head but, nothing carries it forward into the next session.
 
-The memory layer closes that gap. It is a four-store architecture that gives agents persistent, structured access to plant knowledge that accumulates across sessions. The agents get smarter over deployments without anyone having to manually update anything.
+The memory layer closes that gap. It is a five-store architecture that gives agents persistent, structured access to plant knowledge that accumulates across sessions. The agents get smarter over deployments without anyone having to manually update anything.
 
 The context management work addressed efficiency within a session. The memory layer addresses intelligence across sessions. They are related but distinct problems.
 
-## The Four Stores
+## The Five Stores
 
 Each store in the memory architecture serves a specific purpose. They are not interchangeable. The right store for a given query depends on the nature of the question being asked.
 
@@ -24,11 +24,15 @@ Each store in the memory architecture serves a specific purpose. They are not in
 
 > **InfluxDB** - time-series source
 >
-> Long-horizon cross-equipment analytics. Materializes from InfluxDB on a configurable schedule. The Historian reaches for DuckDB when a query spans weeks or requires cross-equipment joins. InfluxDB when it needs recent trends.
+> The plant's process history at full resolution. Every tag value the streaming layer ingests lands here first. The Historian queries it directly for recent trends, and DuckDB materializes from it for long-horizon work.
 
 > **Specialist memory files** - per-specialist persistent notes
 >
 > Unstructured cross-session knowledge. Per-specialist markdown files that accumulate equipment deviation observations, confidence updates, and recurring pattern flags. Injected into the system prompt at session start.
+
+> **Knowledge store** - facility documentation
+>
+> Equipment manuals, maintenance procedures, operating limits and text-layer P&IDs, chunked and embedded for semantic search. Specialists retrieve the passages relevant to the equipment they are diagnosing. Runs in DuckDB with the VSS extension, so it needs no separate vector database.
 
 ## LadybugDB - The Knowledge Graph
 
@@ -44,7 +48,7 @@ The static layer mirrors the topology model from Part II. Every node type and re
 
 ### The dynamic layer
 
-The dynamic layer accumulates operational history. It is written to by the audit trail pipeline and by specialist agents as they complete sessions. It makes the plant model temporal. Not just what the plant is, but what has happened to it and what decisions have been made about it.
+The dynamic layer accumulates operational history. The host writes it on defined triggers: an Incident for each finding that is not Normal, and an Observation when an operator confirms an insight (see The Memory Lifecycle). It makes the plant model temporal. Not just what the plant is, but what has happened to it and what decisions have been made about it.
 
 ```cypher
 // Node tables — static layer
@@ -201,37 +205,27 @@ The Historian agent selects its data source based on the nature of the query. Th
 
 ## Specialist Memory Files
 
-Specialist memory files are per-specialist markdown files that persist unstructured knowledge across sessions. Each specialist maintains its own memory file. Cascade maintains a shared memory file visible to all agents.
+Specialist memory files are per-specialist markdown files that persist unstructured knowledge across sessions. Each specialist has its own file, keyed by the specialist's name. fieldworks-core provides them as `fieldworks.memory.SpecialistMemory`, which reads a file and appends timestamped entries to it.
 
-Memory files are written by specialists at the end of a session and read at the start of the next. They are not a log. They are a distillation. A specialist writes only what is worth carrying forward. Observations that change how future sessions should interpret this equipment, confidence updates on tag bindings, recurring patterns that have not been formally captured in the graph.
+They are not a log. They are a distillation: only what is worth carrying forward. Observations that change how future sessions should interpret this equipment, confidence updates on tag bindings, recurring patterns that have not been formally captured in the graph.
 
-### Memory hierarchy
+### Who writes them
 
-**Cascade shared memory** — plant-wide known issues, recent session summaries, operator communication preferences, trust mode history. All specialists read this before starting work.
+An entry reaches a memory file through an operator. When an operator saves an insight from a session and routes it to specialist memory, the host appends it to that specialist's file. Agents read their memory files but do not write them. A note an agent wrote about itself, unreviewed, would carry into every later session with no one having checked it.
 
-**Specialist memory** — process area specific. RawWater_01's binding confidence notes live in the intake specialist's memory, not in Cascade's. Each specialist maintains its own knowledge base about its process area.
+### Memory scope
 
-**Historian memory** — pattern knowledge that spans process areas. Recurring fault signatures, seasonal baselines, correlation patterns that the Historian has identified across multiple sessions.
+**Specialist memory** — process area specific. RawWater_01's binding confidence notes live in the intake specialist's memory. Each specialist's file holds knowledge about its own process area.
 
-### Bootstrap protocol
+**Historian memory** — pattern knowledge that spans process areas: recurring fault signatures, seasonal baselines, correlations seen across sessions. The Historian is a specialist like any other here and keeps its own file.
 
-At session start, each specialist reads its memory file before doing anything else. This is not optional. It is the first step in the specialist's system prompt instruction. The memory file is injected into the system prompt along with the topology context from the graph.
+### Bootstrap
 
-```markdown
-
-# Specialist system prompt — memory bootstrap
-
-BEFORE READING ANY SENSOR DATA, read your memory file at:
-  /memories/{process_area_id}/specialist_memory.md
-
-This file contains accumulated knowledge from previous sessions.
-Apply it to your diagnostic reasoning before querying current values.
-Update it at the end of this session with anything worth carrying forward.
-```
+At session start, the host reads each specialist's memory file and places it at the top of that specialist's system prompt, ahead of the topology context and before the specialist reads any sensor data. The specialist reasons from it from its first step. If the memory server is unreachable, the specialist starts without it (see Graceful degradation).
 
 ### What goes in a memory file
 
-Memory files are structured but not rigidly schema-bound. The specialist writes in natural language with consistent section headings. The following sections appear in every well-maintained memory file.
+Memory files are structured but not rigidly schema-bound. Entries are natural language, filed under consistent section headings. The following sections appear in every well-maintained memory file.
 
 ```markdown
 
@@ -263,108 +257,105 @@ Last updated: 2026-06-03T18:45:00Z
   Context for interpreting low-flow readings between 22:00 and 06:00.
 ```
 
-```markdown
-
-## Operator patterns
-
-- Night shift typically reduces pump speeds proactively during high turbidity.
-  Context for interpreting low-flow readings between 22:00 and 06:00.
-```
-
 > Memory files are not the audit trail. They are not a log of what happened. They are a specialist's working notes — the knowledge worth carrying forward, distilled from sessions. Redundancy with the audit trail is intentional: the audit trail is complete and uneditable, the memory file is curated and current.
 
-## The memory-mcp server
+## The Knowledge Store
 
-The memory layer is exposed to the agent layer through a dedicated MCP server, memory-mcp. It runs alongside the protocol adapters and the audit-mcp server, and is wired into the aggregator configuration.
+Facility documentation — equipment manuals, maintenance procedures, operating limits, P&IDs — holds domain knowledge that no sensor data can provide. A Specialist that can reason against a pump's engineering manual knows things the topology alone cannot tell it.
+
+fieldworks-core provides the knowledge store as `fieldworks.memory.KnowledgeClient`.
+
+- **Storage.** DuckDB with the VSS extension, in the same embedded engine as the analytical layer. No separate vector database service.
+
+- **Embeddings.** Local by default, through `fastembed`. Documents and queries never leave the deployment. The embedding provider is pluggable.
+
+- **Ingestion.** `.md`, `.txt` and text-layer `.pdf` files are chunked and embedded. Scanned PDFs without a text layer and CAD or image P&IDs are out of scope. Ingestion skips a file it cannot read rather than failing the whole batch.
+
+- **Change detection.** Each file's content hash is stored. Re-ingesting a directory skips unchanged files and re-embeds only new or edited ones.
+
+- **Retrieval.** Semantic search returns the top matching passages with their source file. A query can be scoped to one equipment instance.
+
+Air-gapped deployments install the VSS extension and download the embedding model once while online, then ship both inside the deployment image. `KnowledgeConfig.extension_directory` points DuckDB at the vendored extension, so nothing is fetched at runtime.
+
+> The knowledge store is reference material, not plant history. It answers "what does the manual say about this pump" and never "what happened to this pump". That question belongs to the graph and the historian.
+
+## The Memory Server
+
+The memory layer reaches the agent layer through an MCP server registered in aggregator.json, alongside the protocol adapters and the audit server.
+
+The framework and the deployment split the work the same way they do for the trust layer. fieldworks-core provides the clients that do the work: `GraphClient`, `AnalyticalClient`, `SpecialistMemory` and `KnowledgeClient`. This section defines the tool contract a memory server exposes over them. The server process itself (its MCP wiring, port, environment and startup) is deployment code. The waterworks-ai reference application's `memory-mcp/` is the reference server.
 
 ```json
-
-# aggregator.json — memory-mcp server entry
-
 {
   "name": "memory",
-  "url": "http://localhost:8006/sse",
-  "include_tools": [
-    "graph__query",
-    "graph__write_incident",
-    "graph__write_observation",
-    "graph__write_decision",
-    "memory__read_specialist",
-    "memory__write_specialist",
-    "memory__read_cascade",
-    "memory__write_cascade",
-    "run_correlation"
-  ],
-  "description": "Knowledge graph, analytical queries, and specialist memory files"
+  "url": "http://localhost:8006/sse"
 }
 ```
 
 ### Tool surface
 
-| Field | Type | Required | Description |
-|:---|:---|:---|:---|
-| `graph__query` | Cypher | yes | Execute a read-only Cypher query against the LadybugDB knowledge graph. Used by specialists to retrieve topology context, fault history, and operator decision patterns. |
-| `graph__write_incident` | write | yes | Write a new Incident node and connect it to the relevant Equipment and FaultMode nodes. Called by Cascade at the end of sessions that produced a diagnostic finding. |
-| `graph__write_observation` | write | yes | Write a new Observation node. Called by specialists when they note a tag value or condition worth recording outside the normal audit trail. |
-| `graph__write_decision` | write | yes | Write a new OperatorDecision node and connect it to the relevant Incident. Called by the action path when an operator approves or denies an action. |
-| `memory__read_specialist` | read | yes | Read the memory file for a specific specialist. Called at session start as part of the bootstrap protocol. |
-| `memory__write_specialist` | write | yes | Write or update the memory file for a specific specialist. Called at session end. |
-| `memory__read_cascade` | read | yes | Read the shared Cascade memory file. Called at the start of every session. |
-| `memory__write_cascade` | write | yes | Write or update the shared Cascade memory file. Called by Cascade at session end when plant-wide knowledge warrants updating. |
-| `run_correlation` | DuckDB | yes | Execute a cross-equipment analytical query against the DuckDB materialized dataset. Used by the Historian for long-horizon trend analysis and multi-equipment correlation queries. |
+The aggregator prefixes each tool with the server name, so agents see `memory__query_graph`, `memory__run_correlation` and so on. Every tool declares MCP annotations under the same rules as Part I.
+
+| Tool | Access | Description |
+|:---|:---|:---|
+| `get_topology` | read | Full process area → equipment → type tree. Used for Cascade routing decisions. |
+| `get_specialist_context` | read | Equipment, attributes, fault modes, tag bindings and area notes for one process area. |
+| `get_equipment_history` | read | Past incidents, observations and operator decision patterns for one equipment instance. |
+| `get_writable_attributes` | read | Every writable attribute with its tag, confirmation requirement and write limits. |
+| `get_severity_for_attribute` | read | Severity for an equipment type and attribute, from the graph's FaultMode nodes. Used by the reactive monitor. |
+| `query_graph` | read | Read-only Cypher against the knowledge graph. Write clauses are rejected. |
+| `run_correlation` | read | SELECT query against the DuckDB analytical layer. Used by the Historian for long-horizon and cross-equipment analysis. |
+| `query_knowledge` | read | Semantic search over the knowledge store, optionally scoped to one equipment instance. |
+| `get_specialist_memory` | read | One specialist's memory file. |
+| `record_incident` | write | Write an Incident node and link it to its Equipment and, if known, its FaultMode. |
+| `record_observation` | write | Write an Observation node for an equipment instance. |
+| `link_incident_precedes` | write | Link two incidents with a PRECEDES relationship for causality-chain queries. |
+| `append_specialist_memory` | write | Append a timestamped entry to one specialist's memory file. |
+| `ingest_knowledge_docs` | write | Re-scan the knowledge document directory. Unchanged files are skipped. |
+| `seed_discovered_topology` | destructive | Bulk-write a confirmed topology-builder result into the graph (Part II). |
+
+Agents receive only the read tools. The write tools are called by the host on defined triggers, described in The Memory Lifecycle below, so nothing an agent concludes enters permanent memory without the host deciding it should.
 
 ### Graceful degradation
 
-Memory access degrades gracefully. If memory-mcp is unavailable, sessions still operate. The protocol adapters, aggregator and agent layer continue to function without the memory layer. The only loss is accumulation. Sessions run without knowledge of previous sessions.
+Memory access degrades gracefully. If the memory server is unavailable, sessions still operate. The protocol adapters, aggregator and agent layer continue to function without the memory layer. The only loss is accumulation. Sessions run without knowledge of previous sessions.
 
 This is a deliberate design decision. In industrial settings, uptime is not optional. A memory layer failure must not take the diagnostic capability offline. The memory layer enhances the system. It is not a dependency of the system.
 
-> Graceful degradation applies to the memory layer as a whole. Individual tool failures within a session are handled by the agents. A failed graph\_\_query is logged and the specialist continues without that context, noting the gap in its findings.
+> Graceful degradation applies to the memory layer as a whole. Individual tool failures within a session are handled by the agents. A failed query_graph call is logged and the specialist continues without that context, noting the gap in its findings.
 
 ## The Memory Lifecycle
 
 A complete session with memory follows a defined sequence.
 
-Cascade reads the shared memory file via `memory__read_cascade`.
+The host reads each dispatched specialist's memory file via `get_specialist_memory` and places it at the top of that specialist's system prompt.
 
-Cascade dispatches specialists. Each specialist reads its own memory file via `memory__read_specialist` as the first action in its bootstrap.
-
-Each specialist queries the knowledge graph for topology context, fault history and relevant operator decisions via `graph__query`.
+Cascade routes the query using the topology. Each specialist pulls the graph context it needs through `get_specialist_context`, `get_equipment_history` and `query_graph`, and the relevant documentation through `query_knowledge`.
 
 Specialists read live and historical data from the protocol adapters and InfluxDB. The Historian queries DuckDB via `run_correlation` when long-horizon context is needed.
 
 Specialists return findings to Cascade. Cascade synthesizes and returns the response to the operator.
 
-At session end, Cascade writes updated knowledge to the shared memory file via `memory__write_cascade` if anything at the plant level warrants updating.
+For each specialist whose finding is not Normal, the host writes an Incident node via `record_incident` for the equipment that specialist covers, carrying the session, the diagnosis, the status and the confidence.
 
-Each specialist writes its updated memory file via `memory__write_specialist`, recording any new observations, confidence updates, or patterns identified in this session.
+When the operator saves an insight from the session, the host routes it to its target: an Observation node via `record_observation`, or a specialist's memory file via `append_specialist_memory`.
 
-If the session produced a diagnostic finding, Cascade writes an Incident node to the knowledge graph via `graph__write_incident` and connects it to the relevant Equipment and FaultMode nodes.
+This lifecycle runs on every session. The accumulation is gradual and continuous. Incidents build the graph's operational history on their own. Observations and memory notes accumulate as operators confirm what is worth keeping. After a year, the system holds institutional knowledge that no individual session could have provided.
 
-If an operator decision was made on the action path, it is written to the graph via `graph__write_decision` and connected to the Incident.
+## Planned Memory Layer Extensions
 
-This lifecycle runs on every session. The accumulation is gradual and continuous. After ten sessions, the specialists know more than they did after one. After a hundred sessions, the knowledge graph holds a meaningful operational history. After a year, the system has institutional knowledge that no individual operator session could have provided.
-
-## Phase 2 - Planned Memory Layer Extensions
-
-The four-store architecture described in this part is the current implementation. The following extensions are planned as the framework matures.
+The following extensions are planned as the framework matures.
 
 ### Vector store for fault mode retrieval
 
 The current implementation injects all fault mode descriptions for a process area into the specialist system prompt. This works for facilities with a small number of equipment types. At enterprise scale, with hundreds of equipment types and thousands of fault mode descriptions, the context window becomes a constraint.
 
-A vector store over fault mode embeddings allows the framework to retrieve only the fault modes that are semantically similar to what the current sensor data suggests. The specialist receives a focused, relevant set of fault modes rather than the full library. This is a planned addition for enterprise deployments.
+A vector store over fault mode embeddings allows the framework to retrieve only the fault modes that are semantically similar to what the current sensor data suggests. The specialist receives a focused, relevant set of fault modes rather than the full library. The knowledge store's embedding and search machinery is the likely foundation.
 
-### Knowledge memory via RAG
+### Operator decisions in the graph
 
-Facility documentation — P&IDs, equipment manuals, maintenance procedures, regulatory requirements — contains domain knowledge that no sensor data can provide. A Specialist that can reason against a pump's engineering manual knows things the topology alone cannot tell it.
+The graph schema defines OperatorDecision nodes, and `get_equipment_history` already reads them as decision patterns. Nothing writes them yet. The action path will write one for every approval and denial, linked to the equipment it targeted, so specialists can see how operators have responded to similar proposals before.
 
-RAG over facility documentation is planned as a knowledge memory layer. Documents are indexed at deployment time. Specialists query relevant sections when diagnosis requires deeper equipment or process knowledge than the topology provides.
+### Cascade shared memory
 
-### Reactive architecture
-
-The current architecture is query-response. An operator asks a question; the agents answer it. The streaming layer ingests data continuously but agents do not act on it proactively.
-
-The reactive architecture extends this. A streaming processor watches the incoming process data for patterns that match fault mode descriptions in the knowledge graph. When a pattern is detected, it wakes the relevant specialist proactively. The operator is notified before they need to ask.
-
-The reactive architecture requires the memory layer to be in place before it makes sense. An agent waking up proactively without persistent memory just creates noise. With memory, it can filter against known patterns and known history before alerting. That is a planned Phase 2 capability.
+A memory file shared across all specialists: plant-wide known issues, recent session summaries, operator communication preferences, trust mode history. Every specialist would read it at bootstrap, before its own file.

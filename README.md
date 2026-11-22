@@ -22,7 +22,7 @@ The `topology.yaml` schema. Equipment types, instances, attributes, fault modes,
 Five fixed agents — Cascade, Specialist, Historian, Deadband, Millwright. Diagnostic and action paths. The four-mode trust ladder (advisory, supervised, collaborative, autonomous) and its dispatch rules. The Propose/Approve/Execute mechanism. Audit trail contract.
 
 **Part IV — Memory Layer**
-Four-store architecture — LadybugDB, DuckDB, InfluxDB, specialist memory files. The memory-mcp server. Memory lifecycle.
+Five-store architecture — LadybugDB, DuckDB, InfluxDB, specialist memory files, and the knowledge store for facility documentation. The memory server's tool contract. Memory lifecycle.
 
 ---
 
