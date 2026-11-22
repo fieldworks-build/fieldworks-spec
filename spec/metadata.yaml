@@ -1,0 +1,16 @@
+title: FieldWorks Framework Specification
+author: Sean Slavin
+# version and date are set at build time by scripts/build-pdf.sh
+toc: true
+toc-depth: 2
+papersize: us-letter
+fontsize: 10.5pt
+header-includes: |
+  ```{=typst}
+  // pandoc wraps tables in figures, which can't split across pages and
+  // leave half-empty pages ahead of long tables.
+  #show figure: set block(breakable: true)
+  // Narrow cells: no hyphenation ("Descrip-tion"), no stretched spacing.
+  #show table: set text(hyphenate: false)
+  #show table: set par(justify: false)
+  ```
