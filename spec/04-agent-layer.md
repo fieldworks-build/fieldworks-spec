@@ -44,9 +44,9 @@ The action path is the path of intervention. It begins when a diagnostic finding
 
 - Deadband validates the finding. Is this noise or signal? Does the condition meet the threshold for action given its duration, trend direction, and confidence?
 
-- If Deadband validates the finding as signal, and the action is destructive, operator approval is requested. Destructive actions include setpoint writes, alarm acknowledgements, mode changes, and any operation that cannot be trivially undone.
+- If Deadband validates the finding as signal and the action is destructive, the trust mode decides what happens to it. Destructive actions include setpoint writes, alarm acknowledgements, mode changes, and any operation that cannot be trivially undone.
 
-- The operator approves or denies. In supervised trust mode this step is always present. In assisted mode it is present for destructive actions. In autonomous mode it is bypassed within topology-defined limits, but the operator is notified.
+- The operator approves or denies. In supervised mode this step is always present. In collaborative mode it is present when the proposed value falls outside the target's normal range. In autonomous mode it is bypassed within topology-defined limits, but the operator is notified. In advisory mode the action is only ever a recommendation, and the operator carries it out.
 
 - Millwright receives the approved action, executes it through the aggregator, confirms the outcome, and logs every step.
 
@@ -256,7 +256,7 @@ Deadband outcomes
 
 - **Noise** — condition does not meet the threshold for action. Finding is returned to Cascade as advisory. Logged. No action path.
 
-- **Signal** — condition meets the threshold. If the proposed action is non-destructive, it may proceed to Millwright per trust mode rules. If destructive, operator approval is requested first.
+- **Signal** — condition meets the threshold. A non-destructive action proceeds. A destructive action goes to trust-mode dispatch, which decides whether it waits for operator approval (see Trust Mode).
 
 > Deadband does not decide what action to take. It decides whether the finding warrants action at all. The action itself is proposed by the Specialist finding and executed by Millwright. Deadband is the gate, not the planner.
 Deadband has a destructive action threshold. Any operation that changes control system state in a way that cannot be trivially undone is destructive. The threshold is intentionally broad. When in doubt, require approval.
@@ -321,17 +321,53 @@ What Millwright does not do
 
 ## Trust Mode
 
-Trust mode governs how much autonomy the agent layer operates with. It is a deployment configuration, not a runtime toggle. Changing trust mode is a deliberate decision made by the facility, not something that happens automatically or in response to a query.
+Trust mode governs how much autonomy the agent layer operates with. The facility sets it, and only a person changes it. It never changes automatically or in response to a query.
 
-There are three trust modes. They form a ladder. Each level extends the autonomy of the previous one in a specific, bounded way. What never changes at any level: topology hard limits, the audit trail, and the requirement that Deadband validates before any action path proceeds.
+There are four trust modes. They form a ladder, and each rung widens the loop in one specific, bounded way. What never changes on any rung: topology hard limits, the audit trail, and the requirement that Deadband validates a finding before any action path proceeds.
 
-### Supervised
+Trust mode governs destructive actions: the writes Deadband's destructive action threshold defines. Non-destructive operations, such as reading values, generating reports and sending notifications, never wait for approval in any mode.
 
-Every action path step requires operator approval. Deadband validates the finding and presents it to the operator with a proposed action. Nothing executes until a human says yes.
+### Dispatch
+
+When an agent proposes a destructive action, the trust mode decides what happens to it. Dispatch is a pure function of the mode. For COLLABORATIVE it also needs one fact about the proposal: whether the proposed value sits inside the target's normal range.
+
+| Mode | Disposition | What happens to the proposed action |
+|:---|:---|:---|
+| `ADVISORY` | recommend only | Presented to the operator as a recommendation. Never executed by the system. The operator acts through the plant's own controls. |
+| `SUPERVISED` | intercept | Held pending until the operator approves or denies. Executes only on approval. |
+| `COLLABORATIVE` | auto-approve in range, intercept outside it | Executes without approval when the value is inside the target's normal range. Otherwise held for approval, exactly as in SUPERVISED. |
+| `AUTONOMOUS` | auto-approve | Executes within topology write permissions and hard limits without per-action approval. The operator is notified. |
+
+fieldworks-core implements this dispatch in `fieldworks.trust`: `TrustMode` names the modes and `resolve_disposition()` returns the disposition. The host supplies two things:
+
+- **The active mode.** The host reads it from deployment configuration and passes it in.
+- **The normal-range verdict, in COLLABORATIVE.** The host decides whether the proposed value falls inside the target attribute's `normal_range` from topology.yaml and passes the answer in. Dispatch refuses to guess. A COLLABORATIVE dispatch without that answer is an error, because defaulting either way would hide a real decision.
+
+Acting on the disposition stays the host's job: holding the intercept, presenting the recommendation, executing the approved write and notifying the operator. The Propose/Approve/Execute Primitive below defines the intercept.
+
+An auto-approved action is logged as an approved action with the same fidelity as one an operator approved. The record shows the disposition, so a reader can always tell an operator's approval from the mode's.
+
+### Advisory
+
+The system recommends. It never acts. Findings and proposed actions reach the operator with their supporting evidence, and the operator carries out any change through the plant's own control system.
 
 - Diagnostic path runs without approval.
 
-- Every action path action requires explicit operator approval before execution.
+- Proposed actions are surfaced as recommendations, never executed.
+
+- Millwright does not execute.
+
+- Full audit trail, including every recommendation made.
+
+Advisory suits a deployment where the system has no write path, or where the facility wants the system's judgment without giving it the controls.
+
+### Supervised
+
+Every destructive action requires operator approval. Deadband validates the finding and the operator sees it with a proposed action. Nothing executes until a human says yes.
+
+- Diagnostic path runs without approval.
+
+- Every destructive action requires explicit operator approval before execution.
 
 - Millwright executes only on approved actions.
 
@@ -339,25 +375,23 @@ Every action path step requires operator approval. Deadband validates the findin
 
 - Full audit trail.
 
-Supervised is the appropriate mode for initial deployment, unfamiliar facilities, and any situation where the cost of an incorrect autonomous action is high. It is also the right mode when operator trust in the system is still being established.
+Supervised is the default. It suits initial deployment, unfamiliar facilities and any situation where an incorrect action is costly. It is also the right mode while operators are still building trust in the system.
 
-### Assisted
+### Collaborative
 
-The system recommends. The operator decides. Advisory findings are surfaced automatically. Actions that Deadband validates as warranted are presented to the operator as recommendations with proposed actions and supporting evidence. The operator approves or denies.
+The operator confirms what is unusual. Writes that keep the target inside its normal range execute without confirmation. Writes that would take it outside the normal range wait for approval, as they would in Supervised.
 
 - Diagnostic path runs without approval.
 
-- Advisory findings are surfaced automatically without operator prompt.
+- Destructive actions inside the target's normal range execute without per-action approval.
 
-- Destructive actions require operator approval.
+- Destructive actions outside the normal range require explicit operator approval.
 
-- Non-destructive actions may execute automatically.
-
-- Topology hard limits enforced.
+- Topology hard limits enforced. The normal range sits inside the hard limits, never in place of them.
 
 - Full audit trail.
 
-Assisted is the mode most facilities will operate in for most of their deployment lifetime. The system adds intelligence without removing the operator from control decisions. It surfaces things the operator might have missed and makes it easy to act on them.
+Collaborative is where most facilities will spend most of their deployment lifetime. Routine adjustments stop interrupting the operator, and anything outside normal operation still reaches a human first.
 
 ### Autonomous
 
@@ -365,9 +399,7 @@ Within topology-defined limits, Millwright executes without per-action approval.
 
 - Diagnostic path runs without approval.
 
-- Advisory findings are surfaced automatically.
-
-- Actions within topology write permissions and hard limits execute without per-action approval.
+- Destructive actions within topology write permissions and hard limits execute without per-action approval.
 
 - Operator is notified of autonomous actions in real time.
 
@@ -375,17 +407,21 @@ Within topology-defined limits, Millwright executes without per-action approval.
 
 - Full audit trail. Autonomous actions are logged as clearly as supervised ones.
 
-Autonomous mode is appropriate for well-characterized facilities with high-confidence topology models and a track record of reliable system behavior. It is not the default. It is earned through demonstrated performance in supervised and assisted modes.
+Autonomous mode suits well-characterized facilities with high-confidence topology models and a track record of reliable system behavior. It is not the default. It is earned through demonstrated performance on the lower rungs.
 
-> The trust mode ladder is explicitly modeled on the way experienced operators extend trust to new equipment or new personnel. You supervise first. You assist as confidence grows. You step back when the track record warrants it. The system earns autonomy. It is not granted by default.
+> The trust mode ladder is explicitly modeled on the way experienced operators extend trust to new equipment or new personnel. You watch first. You supervise. You let routine work through as confidence grows. You step back when the track record warrants it. The system earns autonomy. It is not granted by default.
+
+### Changing trust mode
+
+A trust mode change is a deliberate act by a named person. Every change is recorded in the compliance audit log as a `trust_mode_changed` event carrying the previous mode, the new mode, who made the change and the session, if any. If an operator moves a deployment to AUTONOMOUS and something happens, the record shows when and by whom the mode was set. fieldworks-core provides this record as `fieldworks.trust.log_mode_change()`.
 
 ### Trust mode configuration
 
-Trust mode is set in the aggregator configuration at the deployment level.
+Trust mode is set in the aggregator configuration at the deployment level. The host reads it at startup and passes it to dispatch.
 
 ```json
 {
-  "trust_mode": "assisted",
+  "trust_mode": "collaborative",
   "trust_mode_notes": "Elevated from supervised 2026-04-01 after 90-day
     supervised evaluation. Reviewed and approved by plant manager.",
   "servers": [ ... ]
@@ -394,7 +430,7 @@ Trust mode is set in the aggregator configuration at the deployment level.
 
 | Field | Type | Required | Description |
 |:---|:---|:---|:---|
-| `trust_mode` | string | yes | One of: supervised, assisted, autonomous. |
+| `trust_mode` | string | yes | One of: advisory, supervised, collaborative, autonomous. |
 | `trust_mode_notes` | string | no | Human-readable record of why this mode was set and when. Logged to audit trail on startup. |
 | `autonomous_notify_channel` | string | no | Notification endpoint for autonomous action alerts. Required if trust_mode is autonomous. |
 
@@ -566,11 +602,11 @@ Session logs contain full tool results including raw process data. Access to ses
 
 ## The Propose/Approve/Execute Primitive
 
-The Trust Mode section above defines what SUPERVISED mode requires. Every action path step requires operator approval and nothing executes until a human says yes. This section defines the framework-level primitive that makes that requirement enforceable rather than aspirational.
+The Trust Mode section above defines when a proposed action is intercepted: always in SUPERVISED, outside the normal range in COLLABORATIVE. This section defines the framework-level primitive that makes that interception enforceable rather than aspirational.
 
 Prior to this primitive, the propose/approve/execute pattern existed only as an application-specific implementation inside the waterworks-ai reference application. A real, working pattern, but not a reusable contract any other deployment could build against. This section extracts that pattern into fieldworks-core.
 
-> This is the same category of work as extracting SpecialistMemory and the other memory-layer types into the framework. The example and the primitive are being defined together, for the first time, in this release. Treat this section as a new contract, not a description of long-standing behavior.
+> This is the same category of work as extracting SpecialistMemory and the other memory-layer types into the framework. The primitive was first defined in v0.2 as a new contract, not a description of long-standing behavior.
 
 ### How it works
 
@@ -606,14 +642,8 @@ The operational record is a queryable log, kept separately, meant for day-to-day
 
 ### Scope boundary
 
-This mechanism covers SUPERVISED mode only. Every write is confirmed by an operator before execution. It does not yet implement dispatch logic for the other rungs of the trust mode ladder:
-
-**ADVISORY** — the system recommends. It never proposes a write for approval at all.
-
-**COLLABORATIVE** — writes within a pre-approved normal range execute without confirmation. Writes outside that range still require it.
-
-**AUTONOMOUS** — the proposal step is skipped entirely and the write is logged with the same fidelity as a supervised one.
+The intercept runs whenever trust-mode dispatch returns `intercept`: every destructive action in SUPERVISED, and every out-of-range action in COLLABORATIVE. The other dispositions never reach it. ADVISORY presents a recommendation and never proposes a write for approval. AUTONOMOUS, and COLLABORATIVE within the normal range, skip the hold and log the action with the same fidelity as an approved one.
 
 > **IMPLEMENTATION STATUS**
 >
-> *SUPERVISED mode is implemented in fieldworks-core as of this release. ADVISORY, COLLABORATIVE, and AUTONOMOUS mode-dispatch logic is not yet implemented anywhere in the framework or in the waterworks-ai reference application. This is a documented gap in the current release, not a claim that the full trust mode ladder is realized end to end.*
+> *fieldworks-core implements the intercept and dispatch for all four trust modes in `fieldworks.trust`. The waterworks-ai reference application has not yet migrated onto it. Its approval flow lives in its own `chat-ui/tool_dispatch.py` and `control.py`, and it always intercepts, which is SUPERVISED behavior.*
