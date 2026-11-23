@@ -4,8 +4,9 @@
 #   scripts/build-pdf.sh [VERSION]      e.g. scripts/build-pdf.sh 0.3
 #
 # Needs only uv. pandoc and the Typst compiler come from pinned Python
-# packages (pypandoc_binary bundles pandoc; typst bundles the compiler), so
-# local builds and CI use identical tools.
+# packages (pypandoc_binary bundles pandoc; typst bundles the compiler), and
+# the fonts live in scripts/fonts, so local builds and CI render identically.
+# The look lives in scripts/fieldworks.typ.
 # Output: build/FieldWorks_Framework_Specification_v<VERSION>.pdf
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -35,13 +36,20 @@ subprocess.run(
         "--metadata", f"date={date}",
         "--resource-path", "spec",
         "--lua-filter", "scripts/table-widths.lua",
+        "--variable", "template=/scripts/fieldworks.typ",
         "--standalone", "--to", "typst",
         "--output", str(typ),
     ],
     check=True,
 )
 try:
-    typst.compile(str(typ), output=out)
+    typst.compile(
+        str(typ),
+        output=out,
+        root=".",
+        font_paths=["scripts/fonts"],
+        ignore_system_fonts=True,
+    )
 finally:
     typ.unlink(missing_ok=True)
 print(out)

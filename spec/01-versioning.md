@@ -107,27 +107,19 @@ The waterworks-ai reference implementation tracks the current spec version. The 
 
 Breaking changes increment the major version. The following are considered breaking:
 
-Removing or renaming a required tool from the conformant tool surface.
-
-Changing the VQT response envelope schema in a way that breaks existing consumers.
-
-Changing required fields in topology.yaml or aggregator.json.
-
-Changing the LadybugDB schema in a way that requires migration of existing graphs.
-
-Changing agent behavior in a way that breaks existing operator workflows.
+- Removing or renaming a required tool from the conformant tool surface.
+- Changing the VQT response envelope schema in a way that breaks existing consumers.
+- Changing required fields in topology.yaml or aggregator.json.
+- Changing the LadybugDB schema in a way that requires migration of existing graphs.
+- Changing agent behavior in a way that breaks existing operator workflows.
 
 The following are not breaking and increment the minor version:
 
-Adding new optional fields to any schema.
-
-Adding new tools to the conformant surface that do not replace existing ones.
-
-Adding new sections or parts to the specification.
-
-Adding new event types to the audit trail.
-
-Adding new trust mode configurations.
+- Adding new optional fields to any schema.
+- Adding new tools to the conformant surface that do not replace existing ones.
+- Adding new sections or parts to the specification.
+- Adding new event types to the audit trail.
+- Adding new trust mode configurations.
 
 ### Deprecation policy
 
