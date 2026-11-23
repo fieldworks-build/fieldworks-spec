@@ -1,6 +1,6 @@
 # FieldWorks Framework Specification
 
-**Version 0.4 — November 2026**
+**Version 0.5 — November 2026**
 
 The normative reference for FieldWorks-conformant protocol adapters, plant topology definitions, agent behavior, and memory architecture.
 
@@ -97,7 +97,7 @@ fieldworks test-adapter --command "opcua-mcp" --host 127.0.0.1 --port 4840
 
 | Repo | Language | Status |
 |---|---|---|
-| [fieldworks-core](https://github.com/fieldworks-build/fieldworks-core) | Python | 1.5.0, v0.4 except as noted in Compatibility |
+| [fieldworks-core](https://github.com/fieldworks-build/fieldworks-core) | Python | 1.6.0, v0.5 except as noted in Compatibility |
 | [fieldworks-adapters](https://github.com/fieldworks-build/fieldworks-adapters) | Rust | 1.0.5+ conforms to v0.3 Part I: mqtt-mcp, opcua-mcp, modbus-mcp |
 
 ---
@@ -106,6 +106,7 @@ fieldworks test-adapter --command "opcua-mcp" --host 127.0.0.1 --port 4840
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.5 | 2026-11 | Moved trust mode configuration to topology.yaml and defined how a record names who approved an action. |
 | 0.4 | 2026-11 | Defined the FINDINGS and SUMMARY verdict blocks in Part III. |
 | 0.3 | 2026-11 | Caught up with shipped code: annotations, trust dispatch, reactive mode, knowledge store, operator identity. Added Part V (enterprise). |
 | 0.2 | 2026-07 | Added the Propose/Approve/Execute mechanism to Part III (SUPERVISED mode only). |
