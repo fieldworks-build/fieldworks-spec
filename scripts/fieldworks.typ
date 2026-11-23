@@ -213,8 +213,9 @@
   )
   show table.cell.where(y: 0): set text(fill: white, weight: "semibold", size: 9pt)
   show table: set text(size: 9pt)
+  // Code in a header cell: white on the teal fill, no light code box.
   show table.cell.where(y: 0): it => {
-    show raw: r => text(fill: white, r.text)
+    show raw.where(block: false): r => text(font: mono, fill: white, r.text)
     it
   }
   show figure.where(kind: table): set block(above: 1.4em, below: 1.4em)

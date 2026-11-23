@@ -456,12 +456,21 @@ When an agent proposes a destructive action, the trust mode decides what happens
 
 fieldworks-core implements this dispatch in `fieldworks.trust`: `TrustMode` names the modes and `resolve_disposition()` returns the disposition. The host supplies two things:
 
-- **The active mode.** The host reads it from deployment configuration and passes it in.
+- **The active mode.** The host reads it from topology.yaml's `facility.trust_mode` at startup (see Trust mode configuration below) and passes it in.
 - **The normal-range verdict, in COLLABORATIVE.** The host decides whether the proposed value falls inside the target attribute's `normal_range` from topology.yaml and passes the answer in. Dispatch refuses to guess. A COLLABORATIVE dispatch without that answer is an error, because defaulting either way would hide a real decision.
 
 Acting on the disposition stays the host's job: holding the intercept, presenting the recommendation, executing the approved write and notifying the operator. The Propose/Approve/Execute Primitive below defines the intercept.
 
-An auto-approved action is logged as an approved action with the same fidelity as one an operator approved. The record shows the disposition, so a reader can always tell an operator's approval from the mode's.
+An auto-approved action is logged as an approved action with the same fidelity as one an operator approved. The record shows the disposition, so a reader can always tell an operator's approval from the mode's. It does so through three fields every action record carries:
+
+| Who decided | `decision` | `operator_id` | `auth_method` |
+|:---|:---|:---|:---|
+| A person, through their own account | `approved`, `denied` or `timed_out` | The person's id | `user` |
+| A person, through a shared credential | `approved`, `denied` or `timed_out` | The credential's documented value, e.g. `shared-token` | `shared_credential` |
+| Dispatch, AUTONOMOUS or COLLABORATIVE in range | `auto_approved` | `trust-mode:` and the mode, e.g. `trust-mode:autonomous` | `trust_mode` |
+| Dispatch, ADVISORY | `recommended` | `trust-mode:advisory` | `trust_mode` |
+
+A record still awaiting its decision carries `pending`. `auto_approved` and `recommended` appear only with `trust_mode`, and `trust_mode` appears only with them. Part I, Operator identity, defines the `operator_id` values. fieldworks-core checks these rules when it writes a record and refuses one that breaks them, and `fieldworks.trust.dispatch_approver()` returns the three fields for an action dispatch settled itself.
 
 ### Advisory
 
@@ -533,22 +542,31 @@ A trust mode change is a deliberate act by a named person. Every change is recor
 
 ### Trust mode configuration
 
-Trust mode is set in the aggregator configuration at the deployment level. The host reads it at startup and passes it to dispatch.
+Trust mode belongs to the facility, so it lives in topology.yaml beside the facility's other settings: `facility.trust_mode`, `facility.trust_mode_notes` and `facility.autonomous_notify_channel` (Part II, `facility`). A facility that names no mode runs SUPERVISED. An AUTONOMOUS facility must name the channel that notifies operators of each autonomous action, and the topology validator rejects one that doesn't.
+
+```yaml
+facility:
+  site_id: wtp-riverside-01
+  trust_mode: collaborative
+  trust_mode_notes: >
+    Elevated from supervised 2026-04-01 after a 90-day supervised
+    evaluation. Reviewed and approved by the plant manager.
+```
+
+The host reads the mode at startup and passes it to dispatch. Before it handles any query, it writes a `trust_mode_configured` record to the compliance audit log:
 
 ```json
 {
-  "trust_mode": "collaborative",
-  "trust_mode_notes": "Elevated from supervised 2026-04-01 after 90-day
-    supervised evaluation. Reviewed and approved by plant manager.",
-  "servers": [ ... ]
+  "ts": "2026-06-02T16:00:00.000000+00:00",
+  "event": "trust_mode_configured",
+  "trust_mode": "COLLABORATIVE",
+  "trust_mode_notes": "Elevated from supervised 2026-04-01 after a 90-day supervised evaluation. Reviewed and approved by the plant manager.",
+  "autonomous_notify_channel": null,
+  "site_id": "wtp-riverside-01"
 }
 ```
 
-| Field | Type | Required | Description |
-|:---|:---|:---|:---|
-| `trust_mode` | string | yes | One of: advisory, supervised, collaborative, autonomous. |
-| `trust_mode_notes` | string | no | Human-readable record of why this mode was set and when. Logged to audit trail on startup. |
-| `autonomous_notify_channel` | string | no | Notification endpoint for autonomous action alerts. Required if trust_mode is autonomous. |
+A mode edited in topology.yaml between restarts never passes through a `trust_mode_changed` event. The startup records show it instead: consecutive `trust_mode_configured` records with different modes mark the change. fieldworks-core reads the fields in `fieldworks.topology`, converts the mode with `fieldworks.trust.TrustMode.parse()` and writes the startup record with `fieldworks.trust.log_mode_configured()`.
 
 ## The Audit Trail
 
@@ -763,4 +781,4 @@ The intercept runs whenever trust-mode dispatch returns `intercept`: every destr
 
 > **IMPLEMENTATION STATUS**
 >
-> *fieldworks-core implements the intercept and dispatch for all four trust modes in `fieldworks.trust`. The waterworks-ai reference application has not yet migrated onto it. Its approval flow lives in its own `chat-ui/tool_dispatch.py` and `control.py`, and it always intercepts, which is SUPERVISED behavior.*
+> *fieldworks-core implements the intercept and dispatch for all four trust modes in `fieldworks.trust`. As of 1.6.0 it also reads `facility.trust_mode`, writes the `trust_mode_configured` startup record, and records and checks `auth_method` on every action event. The waterworks-ai reference application has not yet migrated onto it. Its approval flow lives in its own `chat-ui/tool_dispatch.py` and `control.py`, and it always intercepts, which is SUPERVISED behavior.*
