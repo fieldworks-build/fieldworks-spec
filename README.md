@@ -123,7 +123,7 @@ The Markdown in [`spec/`](spec/) is the source of truth, one file per part. The 
 scripts/build-pdf.sh 0.3    # -> build/FieldWorks_Framework_Specification_v0.3.pdf
 ```
 
-The script needs only [uv](https://docs.astral.sh/uv/). It runs pandoc and the Typst compiler from pinned Python packages, so a local build matches CI. `scripts/table-widths.lua` and the Typst rules in `spec/metadata.yaml` handle PDF layout only and don't affect the Markdown.
+The script needs only [uv](https://docs.astral.sh/uv/). It runs pandoc and the Typst compiler from pinned Python packages and uses the IBM Plex fonts in `scripts/fonts/`, so a local build matches CI. `scripts/fieldworks.typ` sets the look (cover, colors, headings, tables, code and callouts). It and `scripts/table-widths.lua` affect the PDF only, never the Markdown.
 
 CI (`.github/workflows/pdf.yml`) builds the PDF for every pull request that touches the spec and attaches it as a workflow artifact. Pushing a `v*` tag publishes a GitHub Release with the PDF.
 

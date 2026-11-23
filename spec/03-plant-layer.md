@@ -369,6 +369,7 @@ Templates are optional. The deployer can skip template selection and start disco
 Official templates are maintained by the FieldWorks project. Community templates are contributed by SIs and operators who have deployed against specific plant types and want to share the starting point. Both are available in the template library.
 
 > The template library is a community artifact. An SI who builds a high-quality water treatment template and contributes it back is giving every subsequent water treatment deployment a faster, better start. Over time the template library becomes a repository of industrial domain knowledge — plant structures, equipment types, and fault mode descriptions written by people who have actually maintained that equipment.
+
 **Stage 2 — Discovery**
 
 The builder connects to the configured protocol adapters through the aggregator and walks the available protocol surfaces. For MQTT it calls `get_full_topic_tree` to retrieve the full topic hierarchy. For OPC-UA it calls `get_node_tree` to traverse the address space. For multi-protocol deployments it scans all configured adapters and cross-references findings.

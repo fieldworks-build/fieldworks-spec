@@ -4,7 +4,7 @@ author: Sean Slavin
 toc: true
 toc-depth: 2
 papersize: us-letter
-fontsize: 10.5pt
+fontsize: 10pt
 header-includes: |
   ```{=typst}
   // pandoc wraps tables in figures, which can't split across pages and
