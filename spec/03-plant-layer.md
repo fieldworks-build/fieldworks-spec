@@ -56,6 +56,9 @@ Top-level metadata about the facility. Used by Cascade to provide context in res
 | `description` | string | no | Brief description of the facility type and function. Provides Cascade with context for response framing. |
 | `timezone` | string | yes | IANA timezone string. e.g. America/New_York. Used for local time display in operator-facing responses. |
 | units_system | string | no | Preferred units system: metric or imperial. Default: metric. Individual attributes override this. |
+| `trust_mode` | string | no | The facility's trust mode (Part III, Trust Mode): `advisory`, `supervised`, `collaborative` or `autonomous`, in any case. Default: supervised. |
+| `trust_mode_notes` | string | no | Why this mode was set and when, in plain language. Written to the audit trail at startup. |
+| `autonomous_notify_channel` | string | no | Where the system notifies operators of autonomous actions. Required when `trust_mode` is autonomous. |
 
 ```yaml
 facility:
@@ -64,6 +67,10 @@ facility:
   description: Municipal water treatment facility, 45 MGD capacity
   timezone: America/Chicago
   units_system: metric
+  trust_mode: collaborative
+  trust_mode_notes: >
+    Elevated from supervised 2026-04-01 after a 90-day supervised
+    evaluation. Reviewed and approved by the plant manager.
 ```
 
 #### `process_areas`
@@ -498,6 +505,8 @@ The topology validator checks topology.yaml against the schema defined in this s
 - Normal range min is less than max for all attributes.
 
 - Fault mode severity values are one of: advisory, warning, critical.
+
+- facility.trust_mode, if present, is one of: advisory, supervised, collaborative, autonomous. When it is autonomous, facility.autonomous_notify_channel is present.
 
 - Affected attributes in fault modes reference attribute IDs defined on the equipment type.
 
