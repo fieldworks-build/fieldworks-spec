@@ -1,7 +1,7 @@
 # Versioning
 
 ```text
-Current version: 0.4
+Current version: 0.5
 November 2026  ·  Sean Slavin  ·  fieldworks.build
 ```
 
@@ -25,10 +25,23 @@ FieldWorks uses semantic versioning. Version numbers follow the pattern MAJOR.MI
 | `0.2` | `2026-07` | Added the Propose/Approve/Execute mechanism to Part III (SUPERVISED mode only). Documented as a new framework contract, not a description of existing behavior. |
 | `0.3` | `2026-11` | Brought the spec up to date with what shipped since v0.2: tool annotations and result shapes in Part I, the four-mode trust ladder and reactive mode in Part III, the knowledge store and memory tool contract in Part IV, operator identity, and a new Part V for multi-plant deployments. |
 | `0.4` | `2026-11` | Defined the FINDINGS and SUMMARY verdict blocks in Part III as the agent layer's output contract. |
+| `0.5` | `2026-11` | Moved trust mode configuration into topology.yaml, defined the startup trust mode record, and defined the `decision`, `operator_id` and `auth_method` combinations that tell an operator's approval from the trust mode's. |
 
 New versions will be listed here as the spec evolves. Each entry links to the changelog below for detail on what changed.
 
 ## Changelog
+
+**v0.5 — November 2026**
+
+Part II — `facility` gains `trust_mode` (optional, default supervised), `trust_mode_notes` and `autonomous_notify_channel`. The topology validator rejects an autonomous facility with no notification channel.
+
+Part III — Trust mode configuration now lives in topology.yaml, as decided in fieldworks-spec#17; v0.3 and v0.4 still placed it in the aggregator configuration. The host writes a `trust_mode_configured` record to the compliance log at startup, and consecutive startup records with different modes show a mode edited between restarts.
+
+Part III — Dispatch now defines how a record shows who decided. `decision`, `operator_id` and `auth_method` together tell an operator's approval from the trust mode's: `auto_approved` and `recommended` appear only with `auth_method: trust_mode` and an `operator_id` of `trust-mode:<mode>`. No separate disposition field is needed.
+
+Part III — implementation status note updated: fieldworks-core 1.6.0 implements both, and waterworks-ai 3.5.0 records honest approvers and the startup record.
+
+Moving trust mode out of the aggregator configuration would break a deployment that set it there, but no implementation ever read it from that location. Under the v0.x policy above, this ships as a minor release.
 
 **v0.4 — November 2026**
 
@@ -102,6 +115,7 @@ The waterworks-ai reference implementation tracks the current spec version. The 
 | `0.2` | 2026-07 | fieldworks-core adds the Propose/Approve/Execute mechanism (SUPERVISED mode only). waterworks-ai has not yet migrated its existing action-path code onto it. |
 | `0.3` | 2026-11 | fieldworks-adapters 1.0.5 and later conform to Part I. fieldworks-core 1.3.0 implements the conformance suite, trust dispatch and the memory clients. It does not yet record `auth_method` or the dispatch disposition, or provide Part V. waterworks-ai 3.3.0 implements reactive mode, the memory server and the enterprise layer. Its action path does not yet use fieldworks-core's trust layer or record `operator_id`. |
 | `0.4` | 2026-11 | fieldworks-adapters 1.0.5 and later conform to Part I. fieldworks-core 1.5.0 adds the Part V enterprise layer (1.4.0) and the Verdict Blocks templates and parser. It does not yet record `auth_method` or the dispatch disposition, or load `facility.trust_mode`. waterworks-ai 3.4.0 runs its enterprise layer and verdict parsing on fieldworks-core, meeting Part V's validation, federated-read and audit rules. Its action path does not yet use fieldworks-core's trust layer or record `operator_id`. |
+| `0.5` | 2026-11 | fieldworks-adapters 1.0.5 and later conform to Part I. fieldworks-core 1.6.0 reads `facility.trust_mode`, writes the `trust_mode_configured` record, and records `auth_method` on action events, refusing a record whose `decision`, `operator_id` and `auth_method` disagree. waterworks-ai 3.5.0 records an honest `operator_id` and `auth_method` on every operator decision, checked by fieldworks-core, and writes the startup record. Its approval flow and action table are still its own, and it always runs SUPERVISED. It logs any other configured mode but does not honor it. |
 
 ### Breaking change policy
 
